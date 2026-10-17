@@ -52,7 +52,7 @@ The [full guide](docs/CONNECT.md) also has direct ADB commands for Windows.
 | D-pad / OK | Select / open an app |
 | Up from the first row | Select Settings |
 | Left from Settings | Reach brightness +, then − |
-| OK on + or − | Change brightness by 5 percentage points |
+| OK on + or − | Change Android's brightness value by 5 percentage points |
 | Down from the header | Return to the app grid |
 | Home | Return to BareHome and the previous selection |
 | Back | Stay on the home screen |
@@ -63,7 +63,10 @@ ordinary Android launcher entries. Installing or removing an app refreshes the
 list when you return home. Long labels are shortened to fit.
 
 The sun controls write Android's system brightness setting; they do not draw a
-dark overlay. Permission and hardware support are required. Read
+dark overlay. **Panel control is unverified.** On the tested CSV4K TV, the setting
+changes, but the user reports no visible difference between 5% and 100%; the TV's
+own Picture brightness remains at 50%. Permission alone does not establish
+hardware support. Read
 [how brightness works](docs/BRIGHTNESS.md).
 
 ## Compatibility

@@ -1,9 +1,12 @@
 # Brightness
 
 BareHome puts a sun, **−**, a percentage, and **+** beside Settings. Press Up from
-the first app row, then Left to reach + or −. OK changes the level by five
-percentage points. Holding OK does not repeatedly change it. The default range
-is 5–100% so a single adjustment cannot select zero brightness.
+the first app row, then Left to reach + or −. OK changes Android's brightness
+value by five percentage points. Holding OK does not repeatedly change it. The
+default range is 5–100% so a single adjustment cannot select zero.
+
+**Physical display control is unverified.** These controls can change the Android
+setting without changing the TV's visible brightness.
 
 ## What it changes
 
@@ -14,14 +17,25 @@ brightness, then writes the new value. This can replace an existing automatic
 brightness setting. The percentage is the Android setting, not measured light
 output or a calibrated fraction of the panel's maximum brightness.
 
-On the tested CSV4K Android 11 TV, this changes the panel backlight and persists
-while other apps run. Other TVs may use a separate manufacturer-specific picture
-setting or ignore this Android value. An HDMI stick or box has no built-in panel
-to control, and BareHome does not send HDMI-CEC backlight commands.
+On the tested CSV4K Android 11 TV, diagnostics confirmed that the Android setting
+and reported display/light-service values changed. They did **not** establish
+that the physical panel changed. The user subsequently reported no visible
+difference between BareHome's 5% and 100%, while the TV's own Picture > Brightness
+control remained at 50%. Treat panel control on this model as unsupported unless
+an actual visible change is confirmed. An earlier version of this guide claimed
+the panel backlight changed; that claim was not supported by the test.
+
+The manufacturer's Picture controls are separate from the Android setting used
+here. They may use different scales or control different picture properties;
+BareHome's percentage does not read or synchronize with them. Other TVs may also
+ignore Android's value. An HDMI stick or box has no built-in panel to control,
+and BareHome does not send HDMI-CEC backlight commands.
 
 A changing number alone does **not** establish that your panel's brightness
-changed. Check the visible result. If your TV ignores the value, use its own
-picture settings; the launcher remains usable.
+changed. This also applies to Android diagnostics named brightness or backlight:
+they report software state, not a measurement of light output. Check the visible
+result. If your TV ignores the value, use its own picture settings; the launcher
+remains usable.
 
 There is no dimming overlay, root access, service, timer, or polling. BareHome
 reads the setting when it resumes, when Menu refreshes the screen, and after an
@@ -71,8 +85,10 @@ adb -s TV_SERIAL shell settings --user 0 get system screen_brightness
 adb -s TV_SERIAL shell settings --user 0 get system screen_brightness_mode
 ```
 
-Tap + once and verify an actual display change. Open another app and return
-Home. Restore the original level afterward if this was only a test. For an exact
+Tap + once and check for an actual display change. If none is apparent, do not
+declare support merely because the percentage or diagnostics changed. If there
+is a visible change, open another app and return Home to check whether it lasts.
+Restore the original level afterward if this was only a test. For an exact
 restore of valid original numeric values:
 
 ```text

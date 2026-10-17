@@ -11,6 +11,10 @@
 Only the CSV4K running Android 11 has been tested on real hardware. Other TVs
 may need different default-Home setup, and brightness support varies.
 
+Known issue: the CSV4K user reports no visible brightness change between 5% and
+100%. The controls change Android's setting, but panel control is not verified.
+The earlier claim that they changed this TV's backlight has been retracted.
+
 ## 0.2.0 — Local prototype
 
 - Added brightness controls and permission handling.

@@ -86,7 +86,12 @@ the identity kind.
   `./tv.sh brightness-permission`. No root is required.
 - Check one five-point step and have the user confirm the panel changed when you
   cannot observe it. A successful settings write or changed number is insufficient
-  evidence of hardware support. Restore the original numeric value and mode after
+  evidence of hardware support. Android display/light-service diagnostics,
+  including fields named backlight, do not measure physical light output. The
+  manufacturer's Picture brightness can be separate from this Android value;
+  do not claim the two controls are synchronized. The CSV4K user reported no
+  visible response between 5% and 100%, so panel control is unverified on that
+  model. Restore the original numeric value and mode after
   a diagnostic test unless the user chose a new level.
 - If unsupported, leave the launcher usable and report that limitation. Do not
   invent vendor service calls, change unrelated picture settings, or add a root
