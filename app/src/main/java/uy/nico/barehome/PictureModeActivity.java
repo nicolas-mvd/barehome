@@ -20,6 +20,10 @@ public final class PictureModeActivity extends Activity {
                 Boolean night = PictureCommand.selectedNight(uri);
                 if (night != null) new PictureController(this).select(night.booleanValue());
                 else if (PictureCommand.opensInputs(uri)) openInputs();
+                else if (PictureStateWire.parse(uri) != null) {
+                    // The nonexported receiver owns the short reply lifetime after this Activity exits.
+                    sendBroadcast(new Intent(this, PictureStateReceiver.class).setData(intent.getData()));
+                }
             }
         } finally {
             // Theme.NoDisplay activities must finish before onResume completes.

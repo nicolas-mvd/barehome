@@ -80,6 +80,16 @@ the identity kind.
 
 ## Day/Night picture controls
 
+Version 1.2 adds on-demand state confirmation for BareRemote 0.3. Preserve the
+strict `/state` and `/toggle` query format, private same-subnet callback checks,
+HMAC authentication, bounded replay cache and one-shot receiver lifetime.
+The TV sends one outbound UDP reply; it never listens for network requests.
+`INTERNET` is used only for that local reply. Querying must not write picture
+settings. Toggle decisions come from TV state, not the phone's cached icon.
+Report `custom` when current levels or Picture mode differ from the selected
+preset. An idle widget is last-confirmed state, not continuous observation.
+Never retry an uncertain toggle automatically or log its request secret.
+
 Read `docs/BRIGHTNESS.md`. Version 1.1 has one sun/moon Day/Night button beside
 Settings. It shows the selected BareHome preset. Short OK applies the other
 preset; long OK edits the selected preset's Backlight (5–100) and Picture
@@ -194,9 +204,11 @@ TV screenshots containing personal app content without the user's authorization.
 ## When changing source
 
 Preserve the design: one visible Activity, one custom View, built-in Android Java APIs,
-no runtime dependencies, network, services, scheduled work, or idle redraw loop.
+no runtime dependencies, network listeners, services, scheduled work, or idle redraw loop.
 The only additional Activity is the short, windowless explicit remote-command
 entry point requested for BareRemote; do not turn it into another UI or service.
+Its non-exported reply receiver may perform only the bounded outbound local
+callback described above; no general networking or persistent work is authorized.
 Use `Config.java` for simple configuration. Keep app launch and Home recovery
 working even when optional backlight is unsupported.
 

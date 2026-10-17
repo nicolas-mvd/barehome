@@ -170,9 +170,66 @@ public final class PictureControllerTest {
         check(!home.saveMode(9, true, 4, 22), "Out-of-range editor save accepted");
         check(d.provider.writes.size() == writes, "Rejected editor save wrote settings");
     }
+
+    private static void snapshotsReadActualStateWithoutWrites() {
+        Device d = new Device();
+        PictureController c = new PictureController(d);
+        check("unavailable".equals(c.snapshot()), "Missing profiles invented a mode");
+        check(d.prefs.commits == 0, "Snapshot initialized profiles");
+        check(!c.toggleRemote(), "Remote toggle invented a saved choice");
+        noWrites(d);
+        c.refresh();
+        int commits = d.prefs.commits;
+        check("day".equals(c.snapshot()), "Actual Day not reported");
+        check(d.prefs.commits == commits, "Snapshot rewrote preferences");
+        d.provider.values.put("picture_brightness", 49);
+        check("custom".equals(c.snapshot()), "Externally changed brightness reported Day");
+        d.provider.values.put("picture_brightness", 50);
+        d.provider.values.put("picture_backlight", 59);
+        check("custom".equals(c.snapshot()), "Externally changed backlight reported Day");
+        d.provider.values.put("picture_backlight", 60);
+        d.provider.values.put("picture_mode", 7);
+        check("custom".equals(c.snapshot()), "Wrong TV picture mode reported Day");
+        check(!c.toggleRemote(), "Wrong-mode remote toggle accepted");
+        d.provider.values.put("picture_mode", 9);
+        d.permission = false;
+        check("unavailable".equals(c.snapshot()), "Missing permission reported usable mode");
+        d.permission = true;
+        d.provider.values.put("picture_als", 1);
+        check("unavailable".equals(c.snapshot()), "Ambient control reported usable mode");
+        d.provider.values.put("picture_als", 0);
+        d.provider.values.put("key_picture_mode_movie_auto_backlight", 1);
+        check("unavailable".equals(c.snapshot()), "Automatic backlight reported usable mode");
+        d.provider.values.put("key_picture_mode_movie_auto_backlight", 0);
+        d.prefs.values.put(PictureProfiles.NIGHT_BACKLIGHT, 101);
+        check("unavailable".equals(c.snapshot()), "Corrupted profile silently repaired by snapshot");
+        check(d.prefs.values.get(PictureProfiles.NIGHT_BACKLIGHT) == 101,
+                "Snapshot persisted repaired profile");
+        d.prefs.values.put(PictureProfiles.NIGHT_BACKLIGHT, 5);
+        d.prefs.values.put(PictureProfiles.ACTIVE_NIGHT, 2);
+        check("unavailable".equals(c.snapshot()), "Corrupt selected mode accepted");
+        d.prefs.values.put(PictureProfiles.ACTIVE_NIGHT, 0);
+        Build.MODEL = "Other";
+        check("unavailable".equals(c.snapshot()), "Unsupported model reported a mode");
+        Build.MODEL = "CSV4K";
+        d.provider.denied = true;
+        check("unavailable".equals(c.snapshot()), "Snapshot read error escaped");
+        d.provider.denied = false;
+        check(d.prefs.commits == commits, "Read-only snapshots committed preferences");
+        noWrites(d);
+        check(c.toggleRemote(), "Remote toggle from saved Day failed");
+        check("night".equals(c.snapshot()), "Remote toggle did not report actual Night");
+        PictureController secondPhone = new PictureController(d);
+        check("night".equals(secondPhone.snapshot()), "Other phone did not read current TV mode");
+        check(secondPhone.toggleRemote(), "Second phone could not toggle current TV mode");
+        check("day".equals(c.snapshot()), "First phone retained stale mode");
+        d.prefs.values.put(PictureProfiles.ACTIVE_NIGHT, 1);
+        check("custom".equals(c.snapshot()), "Selected Night with actual Day levels reported Night");
+    }
     public static void main(String[] args) {
         commandsAreExact(); startupAndExplicitSelection(); allGatesPreventWrites();
         failedWritesAndSavesRollBack(); remoteAndHomeShareLatestProfiles();
+        snapshotsReadActualStateWithoutWrites();
         System.out.println("PictureController: " + assertions + " behavioral assertions passed");
     }
 }

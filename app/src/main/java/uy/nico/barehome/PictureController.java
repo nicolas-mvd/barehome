@@ -205,6 +205,34 @@ final class PictureController {
         return canChangePicture() && applyProfile(pictureProfiles.select(!pictureProfiles.night));
     }
 
+    /** Read only: never initializes, repairs, persists, or applies a preset. */
+    String snapshot() {
+        try {
+            if (!supportsBacklight()
+                    || context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS)
+                            != PackageManager.PERMISSION_GRANTED
+                    || automaticBacklightEnabled()
+                    || profileStore.get(PictureProfiles.VERSION, 0) != 1) return "unavailable";
+            int backlight = pictureLevel(BACKLIGHT_SETTING);
+            int brightness = pictureLevel(PICTURE_BRIGHTNESS_SETTING);
+            int mode = Settings.Global.getInt(context.getContentResolver(), "picture_mode", -1);
+            if (backlight < 0 || brightness < 0 || mode < 0) return "unavailable";
+            PictureProfiles.State saved = PictureProfiles.load(profileStore, backlight, brightness, mode);
+            // load() may propose defaults for damaged storage; reporting must not silently repair it.
+            if (!savedProfileMatches(saved)) return "unavailable";
+            if (mode != saved.pictureMode || backlight != saved.backlight()
+                    || brightness != saved.brightness()) return "custom";
+            return saved.night ? "night" : "day";
+        } catch (SecurityException | ClassCastException invalid) {
+            return "unavailable";
+        }
+    }
+
+    boolean toggleRemote() {
+        // A remote toggle needs a usable saved choice; initialization belongs to Home.
+        return !"unavailable".equals(snapshot()) && toggle();
+    }
+
     boolean saveMode(int editorPictureMode, boolean night, int backlight, int brightness) {
         if (!canChangePicture()) return false;
         if (editorPictureMode != pictureProfiles.pictureMode || night != pictureProfiles.night) {

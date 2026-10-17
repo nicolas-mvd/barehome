@@ -3,6 +3,7 @@
     package="uy.nico.barehome">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <queries>
@@ -30,6 +31,7 @@
         android:supportsRtl="true"
         android:hardwareAccelerated="false"
         android:enableOnBackInvokedCallback="false">
+        <receiver android:name=".PictureStateReceiver" android:exported="false" />
         <activity
             android:name=".PictureModeActivity"
             android:exported="true"
@@ -43,6 +45,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="barehome" android:host="picture" android:path="/day" />
                 <data android:scheme="barehome" android:host="picture" android:path="/night" />
+                <data android:scheme="barehome" android:host="picture" android:path="/state" />
+                <data android:scheme="barehome" android:host="picture" android:path="/toggle" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

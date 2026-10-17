@@ -1,6 +1,6 @@
 # Day/Night picture controls
 
-BareHome 1.1 puts one **☀ Day / ☾ Night** button beside Settings. It changes
+BareHome 1.2 puts one **☀ Day / ☾ Night** button beside Settings. It changes
 both the panel's **Backlight** and **Picture → Brightness** on the supported TV.
 The button shows the selected BareHome mode; a short press switches to the other
 mode, and a long press opens the selected mode's settings.
@@ -36,6 +36,33 @@ can make the TV's current levels differ from it.
 
 ## From a paired phone
 
+BareHome **1.2** and BareRemote **0.3** add a TV-confirmed mode icon. The phone
+checks the selected preset and actual Backlight/Picture Brightness values when
+opening the remote, tapping Sync, or toggling the mode. The TV chooses the next
+preset, so either phone can toggle without relying on a local guess. The icon
+shows the last confirmed Day or Night. If settings no longer match the selected
+preset, or confirmation fails, the phone shows a question mark.
+
+An idle widget keeps its last confirmation. Tap Sync after changing modes on
+another phone or with the TV remote. Neither app polls continuously.
+
+The new fixed `/state` and `/toggle` links contain a private callback IPv4
+address, UDP port and fresh request secret, sent over the phone's existing pinned
+TV Remote TLS connection. BareHome accepts only a callback on its local subnet,
+validates all fields, and sends one HMAC-authenticated state reply. The temporary
+phone socket closes after completion, cancellation or timeout. Recent duplicate
+toggle requests are recorded before applying and do not toggle twice. The phone
+never automatically retries an uncertain toggle.
+
+This adds Android's `INTERNET` permission to BareHome for outbound local replies.
+There is no TV listener, permanent service, cloud connection or background
+polling. A short non-exported receiver completes the reply after the windowless
+entry activity exits. A query does not write TV picture settings. Network
+isolation, blocked UDP or VPN routing can prevent confirmation while ordinary
+remote keys still work. See the [wire format and limits](https://github.com/nicolas-mvd/bareremote/blob/main/docs/PICTURE_STATE.md).
+
+The existing exact Day/Night commands below remain compatible with older phones.
+
 With BareHome **1.1 or newer**, [BareRemote](https://github.com/nicolas-mvd/bareremote)
 can send an explicit Day or Night request over its already paired Android TV
 Remote connection. Upgrade BareHome in place using `adb install -r` or
@@ -55,7 +82,7 @@ Each request applies the corresponding saved preset; repeated Night remains
 Night, and repeated Day remains Day. Values are edited on the TV by holding OK
 on the launcher button. Remote links cannot edit levels, switch the TV's Picture
 mode, bypass the exact model gate, or disable automatic picture controls. All
-other paths, query parameters, and fragments are rejected. Other local TV apps
+other paths, query parameters, and fragments on these legacy links are rejected. Other local TV apps
 may invoke these same two exported links.
 
 A separate activity uses Android's `Theme.NoDisplay`, applies the guarded
@@ -64,7 +91,7 @@ and has no Home task affinity. The TV shows a brief success or error message.
 Opening Home later reloads the saved selection. Launching or resuming Home
 still does not apply a preset.
 
-This is a one-way request: a phone's “sent” status does not confirm that the TV
+These legacy links are one-way requests: a phone's “sent” status does not confirm that the TV
 accepted or visibly applied it. Unsupported TVs and missing picture permission
 remain unsupported. Although the entry point has no window and returns
 immediately, Android can briefly transition the current app's activity state;
@@ -132,7 +159,7 @@ across a TV reboot have **not** been tested.
 
 ## Allow access once
 
-Install BareHome 1.1, then confirm the TV's identity through an authorized ADB
+Install BareHome 1.2, then confirm the TV's identity through an authorized ADB
 connection. See [Connect and install](CONNECT.md) for USB and network debugging.
 Replace `TV_SERIAL` with the selected device:
 
@@ -278,3 +305,13 @@ Night 5 / 20 to Day 60 / 50 change was clearly visible. The request came from th
 signed BareRemote 0.2.0 APK on the Android 15 emulator. This confirms the visible
 preset change on the tested panel; it does not establish uninterrupted playback
 in every TV app.
+
+### 1.2 prerelease state confirmation
+
+All 37 host tests pass, including 113 picture-controller and 97 callback-wire,
+subnet and replay assertions. The signed public APK was installed on an Android
+15 emulator; its actual windowless entry point and receiver returned a correctly
+authenticated `unavailable` state for that unsupported device. Phone APK checks
+against a simulated TV cover authenticated Day/Night replies and mode toggles.
+These do not establish physical-TV callback compatibility. The owner deferred
+that check, so the physical TV was left unchanged on the prior installed build.
