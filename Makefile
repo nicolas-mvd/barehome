@@ -1,4 +1,4 @@
-.PHONY: build status capture-home check install run use restore memory brightness-permission test
+.PHONY: build status capture-home check install run use restore memory backlight-permission brightness-permission test
 build:
 	./build.sh
 status:
@@ -17,7 +17,8 @@ restore:
 	./tv.sh restore
 memory:
 	./tv.sh memory
-brightness-permission:
-	./tv.sh brightness-permission
+backlight-permission:
+	./tv.sh backlight-permission
+brightness-permission: backlight-permission
 test:
 	python3 -m unittest discover -s tests -v

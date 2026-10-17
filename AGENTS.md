@@ -30,8 +30,9 @@ before operating a device.
 
 An instruction to install BareHome as the user's launcher authorizes the normal
 reversible installation and default-Home steps. Do not repeatedly ask permission
-for each command. Optional brightness access is covered when the user requested
-working brightness controls or used the README's installation prompt. Do not
+for each command. Optional backlight access is covered when the user requested
+working backlight controls or used the README's installation prompt. Explain
+the broader permission scope before granting it as part of those steps. Do not
 interpret an installation request as permission to erase data or reconfigure
 unrelated apps.
 
@@ -58,7 +59,7 @@ unrelated apps.
    qualified component is also valid), and press the remote's Home key or send
    `KEYCODE_HOME`. Confirm the displayed app. A successful ADB connection alone
    is not successful installation or default selection.
-6. If requested, enable and test brightness as below. Provide the installed
+6. If requested, enable and test backlight as below. Provide the installed
    version, what was verified, any remaining compatibility limits, and the
    exact rollback command. Explain that ordinary use needs neither ADB nor AI.
 7. Help the user turn debugging off afterward. Do not expose ADB through router
@@ -67,7 +68,8 @@ unrelated apps.
 
 Use the direct ADB equivalents in `docs/CONNECT.md` on systems without a POSIX
 shell. The helpers provide `capture-home`, `status`, `check`, `install [APK-path]`,
-`run`, `use`, `restore`, `memory`, and `brightness-permission`. `check` verifies
+`run`, `use`, `restore`, `memory`, and `backlight-permission` (also accepted as
+`brightness-permission`). `check` verifies
 the saved rollback remains available without changing Home. Local rollback
 records in `.device-state/` use `ro.serialno` or `ro.boot.serialno` when available
 to follow the same TV across USB/Wi-Fi or address changes. If neither is
@@ -76,26 +78,45 @@ For that fallback, verify the same physical TV before reusing saved state and
 preserve the original Home component across address changes. `status` reports
 the identity kind.
 
-## Brightness checks
+## Backlight checks
 
-- Explain that this writes Android's system brightness value and selects manual
-  mode. It is not a visual overlay and may not control that model's panel.
-- Read and privately record `screen_brightness` and `screen_brightness_mode` for
-  user 0 before testing. If the brightness value is unavailable, leave it alone.
-- Grant `WRITE_SETTINGS` only for BareHome using the permission screen or
-  `./tv.sh brightness-permission`. No root is required.
-- Check one five-point step and have the user confirm the panel changed when you
-  cannot observe it. A successful settings write or changed number is insufficient
-  evidence of hardware support. Android display/light-service diagnostics,
-  including fields named backlight, do not measure physical light output. The
-  manufacturer's Picture brightness can be separate from this Android value;
-  do not claim the two controls are synchronized. The CSV4K user reported no
-  visible response between 5% and 100%, so panel control is unverified on that
-  model. Restore the original numeric value and mode after
-  a diagnostic test unless the user chose a new level.
-- If unsupported, leave the launcher usable and report that limitation. Do not
-  invent vendor service calls, change unrelated picture settings, or add a root
-  dependency to make the control appear to work.
+- Read `docs/BRIGHTNESS.md`. Version 0.3.1 writes the vendor's global
+  `picture_backlight` setting, not Android's generic brightness setting and not
+  Picture → Brightness. The TV's existing Settings service applies it to the
+  panel. Do not claim universal TV support.
+- Require all three exact identifiers: model `CSV4K`, device `zhongshan`, product
+  `KTC_MOTOROLA_4K_SA_21V2`. Only one physical KTC/Motorola TV, Android 11 / API 30,
+  has been tested. The app displays an em dash on other devices and keeps app
+  launching usable. Do not remove this gate to make an untested model look
+  supported.
+- Explain that optional `WRITE_SECURE_SETTINGS` is a broad protected-settings
+  permission, while this code writes only `picture_backlight`. Install the new
+  APK before `./tv.sh backlight-permission`, which grants it to BareHome for
+  user 0. The old `WRITE_SETTINGS` grant is insufficient. No root or ongoing ADB
+  connection is needed. If the firmware refuses the grant, report that result.
+- Read and privately record the existing global `picture_backlight` value before
+  testing. If missing or outside 0–100, leave it alone. Preserve the user's
+  original picture mode and automatic backlight/ambient-light settings. The app
+  refuses changes while automatic backlight or ambient-light control is on;
+  let the user choose whether to disable these in Picture settings.
+- Have someone watch the actual panel during a low/high comparison. A successful
+  write, changed number, or Android display/light-service diagnostic is not
+  proof of visible panel control. If only the number changes, open the OEM
+  Settings once and return Home; its service must be running. If it still has
+  no visible effect, report failure and use the TV's native Picture controls.
+- For historical evidence, the local `0.3.1-backlight-test` build was visibly
+  verified at 16% and 86% on 2026-10-17; the native vendor service returned
+  success/readbacks and the original 66% was restored. Picture → Brightness
+  stayed at 50. A Settings/Home round-trip passed. Only Movie mode (9) was
+  tested; HDR, Dolby Vision, other picture modes/firmware, other models, and
+  reboot persistence remain untested. Do not imply the public alphabetical
+  build itself was installed for that test; the test build had personal app
+  ordering and the same backlight implementation.
+- Restore the original backlight after diagnostics unless the user chose a new
+  level. Verify the visible result and a trip away from and back to Home.
+  Explain how to revoke `WRITE_SECURE_SETTINGS` using the documented command.
+  Do not invent vendor service calls, change unrelated picture settings, or add
+  a root dependency to make an unsupported control appear to work.
 
 ## Recovery and boundaries
 
@@ -115,7 +136,7 @@ TV screenshots containing personal app content without the user's authorization.
 Preserve the design: one Activity, one custom View, built-in Android Java APIs,
 no runtime dependencies, network, services, scheduled work, or idle redraw loop.
 Use `Config.java` for simple configuration. Keep app launch and Home recovery
-working even when optional brightness is unsupported.
+working even when optional backlight is unsupported.
 
 Build with JDK 17+, SDK Platform 35, and Build Tools 35.0.0 via `./build.sh`.
 Use `BAREHOME_SDK`, `ANDROID_HOME`, or `ANDROID_SDK_ROOT` for the SDK location.

@@ -8,12 +8,13 @@ APP=$PACKAGE/.MainActivity
 
 die() { printf '%s\n' "$*" >&2; exit 1; }
 usage() {
-    echo 'Usage: BAREHOME_TV=SERIAL ./tv.sh status|capture-home|check|install [APK]|run|use|restore|memory|brightness-permission'
+    echo 'Usage: BAREHOME_TV=SERIAL ./tv.sh status|capture-home|check|install [APK]|run|use|restore|memory|backlight-permission'
+    echo 'brightness-permission is a compatibility alias for backlight-permission.'
     echo 'Find SERIAL with adb devices -l. Set BAREHOME_ADB if adb is not on PATH.'
 }
 case "${1:-}" in
     -h|--help|help) usage; exit 0 ;;
-    status|capture-home|check|install|run|use|restore|memory|brightness-permission) ;;
+    status|capture-home|check|install|run|use|restore|memory|backlight-permission|brightness-permission) ;;
     *) usage >&2; exit 1 ;;
 esac
 if test "$1" = install; then
@@ -167,12 +168,31 @@ case "$1" in
         set_home "$previous"
         ;;
     memory) "$ADB" -s "$TV" shell dumpsys meminfo "$PACKAGE" ;;
-    brightness-permission)
-        "$ADB" -s "$TV" shell cmd appops set --user 0 "$PACKAGE" WRITE_SETTINGS allow || die 'Could not grant the brightness setting permission.'
-        permission=$("$ADB" -s "$TV" shell cmd appops get --user 0 "$PACKAGE" WRITE_SETTINGS) || die 'Could not verify the brightness setting permission.'
-        case "$permission" in
-            *WRITE_SETTINGS:*allow*) printf '%s\n' "$permission" ;;
-            *) die "Brightness permission was not verified: $permission" ;;
+    backlight-permission|brightness-permission)
+        # These match Build.MODEL, Build.DEVICE, and Build.PRODUCT in the app.
+        # The presence of a key alone is not proof of a compatible panel driver.
+        model=$("$ADB" -s "$TV" shell getprop ro.product.model) || die 'Cannot read the TV model; nothing was granted.'
+        device=$("$ADB" -s "$TV" shell getprop ro.product.device) || die 'Cannot read the TV device; nothing was granted.'
+        product=$("$ADB" -s "$TV" shell getprop ro.product.name) || die 'Cannot read the TV product; nothing was granted.'
+        model=$(printf '%s' "$model" | tr -d '\r')
+        device=$(printf '%s' "$device" | tr -d '\r')
+        product=$(printf '%s' "$product" | tr -d '\r')
+        test "$model" = CSV4K && test "$device" = zhongshan && test "$product" = KTC_MOTOROLA_4K_SA_21V2 \
+            || die 'Backlight control is supported only for the tested CSV4K / zhongshan / KTC_MOTOROLA_4K_SA_21V2 configuration. Nothing was granted; see docs/BRIGHTNESS.md.'
+        backlight=$("$ADB" -s "$TV" shell settings get global picture_backlight) || die 'Cannot read picture_backlight; nothing was granted.'
+        backlight=$(printf '%s' "$backlight" | tr -d '\r')
+        case "$backlight" in
+            [0-9]|[0-9][0-9]|[0-9][0-9][0-9])
+                test "$backlight" -le 100 || die 'picture_backlight is outside 0–100; nothing was granted.' ;;
+            *) die 'No valid existing picture_backlight value in 0–100; nothing was granted.' ;;
         esac
+        echo 'Enabling optional backlight controls. WRITE_SECURE_SETTINGS is broader than backlight access; read docs/BRIGHTNESS.md for scope and revocation.'
+        "$ADB" -s "$TV" shell pm grant --user 0 "$PACKAGE" android.permission.WRITE_SECURE_SETTINGS \
+            || die 'Could not grant the backlight permission. Install BareHome v0.3.1 or newer first; see docs/BRIGHTNESS.md.'
+        # Match a granted permission entry, never its requested-permissions name.
+        permissions=$("$ADB" -s "$TV" shell dumpsys package "$PACKAGE") || die 'Could not verify the backlight permission; see docs/BRIGHTNESS.md.'
+        printf '%s\n' "$permissions" | tr -d '\r' | grep -Eq '^[[:space:]]*android\.permission\.WRITE_SECURE_SETTINGS: granted=true([,[:space:]]|$)' \
+            || die 'WRITE_SECURE_SETTINGS was not verified as granted; backlight controls are not ready. See docs/BRIGHTNESS.md.'
+        printf 'Verified WRITE_SECURE_SETTINGS. Current backlight: %s%%; its value was not changed. Reopen BareHome to use the controls.\n' "$backlight"
         ;;
 esac

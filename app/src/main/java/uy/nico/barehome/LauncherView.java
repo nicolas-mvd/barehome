@@ -265,7 +265,7 @@ final class LauncherView extends View {
     private void describeSelection() {
         String description;
         if (headerFocused == HEADER_MINUS || headerFocused == HEADER_PLUS) {
-            description = headerFocused == HEADER_MINUS ? "Decrease brightness" : "Increase brightness";
+            description = headerFocused == HEADER_MINUS ? "Decrease backlight" : "Increase backlight";
             if (brightness >= 0) description += ", " + brightness + " percent";
         } else {
             description = headerFocused == HEADER_SETTINGS || apps.length == 0 ? "Settings" : apps[selected].label;

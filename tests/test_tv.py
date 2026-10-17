@@ -50,6 +50,16 @@ elif command == ["shell", "getprop", "ro.serialno"]:
     print(device.get("serialno", ""))
 elif command == ["shell", "getprop", "ro.boot.serialno"]:
     print(device.get("boot_serialno", ""))
+elif command[:2] == ["shell", "getprop"]:
+    if device.get("property_failure"):
+        sys.exit("property read failed")
+    properties = {"ro.product.model": "model", "ro.product.device": "device",
+                  "ro.product.name": "product"}
+    print(device.get(properties[command[2]], ""))
+elif command == ["shell", "settings", "get", "global", "picture_backlight"]:
+    if device.get("backlight_read_failure"):
+        sys.exit("settings read failed")
+    print(device.get("backlight", "null"))
 elif command[:4] == ["shell", "cmd", "package", "resolve-activity"]:
     home = device["home"]
     if device.get("full_components"):
@@ -81,10 +91,21 @@ elif command == ["shell", "input", "keyevent", "KEYCODE_HOME"]:
     pass
 elif command[:4] == ["shell", "am", "start", "-W"]:
     print("Error: Activity class does not exist." if device.get("am_error") else "Status: ok")
-elif command[:4] == ["shell", "cmd", "appops", "set"]:
-    device["brightness_permission"] = "allow"
-elif command[:4] == ["shell", "cmd", "appops", "get"]:
-    print("WRITE_SETTINGS: " + device.get("brightness_permission", "default"))
+elif command[:3] == ["shell", "pm", "grant"]:
+    if device.get("grant_failure"):
+        sys.exit("permission grant failed")
+    if not device.get("grant_no_effect"):
+        device["backlight_permission"] = True
+elif command == ["shell", "dumpsys", "package", "uy.nico.barehome"]:
+    if device.get("permission_dump_failure"):
+        sys.exit("package dump failed")
+    if "permission_dump" in device:
+        print(device["permission_dump"])
+    else:
+        print("    requested permissions:\n      android.permission.WRITE_SECURE_SETTINGS")
+        print("    install permissions:")
+        print("      android.permission.WRITE_SECURE_SETTINGS: granted=" +
+              str(device.get("backlight_permission", False)).lower())
 elif command == ["shell", "dumpsys", "meminfo", "uy.nico.barehome"]:
     print("TOTAL PSS: 12345")
 else:
@@ -150,6 +171,17 @@ class InstallerTests(unittest.TestCase):
         for call in self.calls() if calls is None else calls:
             self.assertNotIn("set-home-activity", call["command"])
             self.assertNotIn("KEYCODE_HOME", call["command"])
+
+    def supported_backlight(self, **options):
+        self.devices["tv-one:5555"].update(
+            model="CSV4K", device="zhongshan", product="KTC_MOTOROLA_4K_SA_21V2",
+            backlight="66")
+        self.devices["tv-one:5555"].update(options)
+        self.save_devices()
+
+    def assert_no_permission_grant(self):
+        self.assertFalse(any(call["command"][:3] == ["shell", "pm", "grant"]
+                             for call in self.calls()))
 
     def test_explicit_serial_required_even_with_multiple_devices(self):
         self.run_tv("install", serial=None, success=False)
@@ -323,10 +355,88 @@ class InstallerTests(unittest.TestCase):
         self.save_devices()
         self.run_tv("run", success=False)
 
-    def test_brightness_permission_is_scoped_and_verified(self):
+    def test_backlight_permission_is_gated_scoped_and_verified_without_changing_level(self):
+        self.supported_backlight()
+        result = self.run_tv("backlight-permission")
+        self.assertEqual([call["command"] for call in self.calls()][-6:], [
+            ["shell", "getprop", "ro.product.model"],
+            ["shell", "getprop", "ro.product.device"],
+            ["shell", "getprop", "ro.product.name"],
+            ["shell", "settings", "get", "global", "picture_backlight"],
+            ["shell", "pm", "grant", "--user", "0", "uy.nico.barehome", "android.permission.WRITE_SECURE_SETTINGS"],
+            ["shell", "dumpsys", "package", "uy.nico.barehome"]])
+        self.assertEqual(self.read_devices()["tv-one:5555"]["backlight"], "66")
+        self.assertIn("broader than backlight", result.stdout)
+        self.assertIn("Current backlight: 66%", result.stdout)
+        self.assert_no_home_change()
+
+    def test_brightness_permission_remains_a_backlight_alias(self):
+        self.supported_backlight()
         self.run_tv("brightness-permission")
-        self.assertEqual(self.calls()[-2]["command"], ["shell", "cmd", "appops", "set", "--user", "0", "uy.nico.barehome", "WRITE_SETTINGS", "allow"])
-        self.assertEqual(self.calls()[-1]["command"], ["shell", "cmd", "appops", "get", "--user", "0", "uy.nico.barehome", "WRITE_SETTINGS"])
+        self.assertEqual(self.calls()[-2]["command"], ["shell", "pm", "grant", "--user", "0", "uy.nico.barehome", "android.permission.WRITE_SECURE_SETTINGS"])
+        self.assertFalse(any("appops" in call["command"] for call in self.calls()))
+
+    def test_backlight_permission_requires_every_known_model_field(self):
+        for field in ("model", "device", "product"):
+            with self.subTest(field=field):
+                self.supported_backlight(**{field: "unsupported"})
+                self.run_tv("backlight-permission", success=False)
+        self.assert_no_permission_grant()
+        self.assertFalse(any("picture_backlight" in call["command"] for call in self.calls()))
+
+    def test_backlight_permission_rejects_missing_and_invalid_key_without_grant(self):
+        for value in ("null", "", "-1", "101", "50.5", "word", "99\n0", "99999999999999999999"):
+            with self.subTest(value=value):
+                self.supported_backlight(backlight=value)
+                self.run_tv("backlight-permission", success=False)
+        self.assert_no_permission_grant()
+
+    def test_backlight_permission_accepts_numeric_endpoints(self):
+        for value in ("0", "100"):
+            with self.subTest(value=value):
+                self.supported_backlight(backlight=value)
+                self.run_tv("backlight-permission")
+
+    def test_backlight_read_failures_do_not_grant_permission(self):
+        for failure in ("property_failure", "backlight_read_failure"):
+            with self.subTest(failure=failure):
+                self.supported_backlight(property_failure=False, backlight_read_failure=False)
+                self.devices["tv-one:5555"][failure] = True
+                self.save_devices()
+                self.run_tv("backlight-permission", success=False)
+        self.assert_no_permission_grant()
+
+    def test_backlight_grant_failure_does_not_claim_success(self):
+        self.supported_backlight(grant_failure=True)
+        result = self.run_tv("backlight-permission", success=False)
+        self.assertNotIn("Verified", result.stdout)
+        self.assertNotIn("dumpsys", self.calls()[-1]["command"])
+
+    def test_backlight_silent_grant_failure_is_detected(self):
+        self.supported_backlight(grant_no_effect=True)
+        self.run_tv("backlight-permission", success=False)
+
+    def test_backlight_permission_dump_failure_is_detected(self):
+        self.supported_backlight(permission_dump_failure=True)
+        self.run_tv("backlight-permission", success=False)
+
+    def test_backlight_permission_requires_exact_granted_entry(self):
+        for output in (
+            "requested permissions:\n  android.permission.WRITE_SECURE_SETTINGS",
+            "android.permission.WRITE_SECURE_SETTINGS: granted=false\nandroid.permission.WRITE_SETTINGS: granted=true",
+            "android.permission.WRITE_SECURE_SETTINGS_EXTRA: granted=true",
+            "android.permission.WRITE_SECURE_SETTINGS: granted=trueish",
+        ):
+            with self.subTest(output=output):
+                self.supported_backlight(permission_dump=output)
+                self.run_tv("backlight-permission", success=False)
+
+    def test_backlight_non_owner_user_is_rejected_before_grant(self):
+        self.supported_backlight(active_user=10)
+        self.run_tv("backlight-permission", success=False)
+        self.assert_no_permission_grant()
+        self.assertEqual([call["command"] for call in self.calls()],
+                         [["get-state"], ["shell", "am", "get-current-user"]])
 
 
 if __name__ == "__main__":

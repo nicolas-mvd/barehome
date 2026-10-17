@@ -18,7 +18,7 @@ Copy this into ChatGPT or a local coding agent:
 > README, AGENTS.md, docs/CONNECT.md, and docs/BRIGHTNESS.md. Help me connect my TV
 > through wireless or USB debugging, install BareHome, test it, and make it my
 > default launcher. Save my previous launcher so I can switch back. Enable the
-> brightness buttons if my TV supports them. Use local tools if you have access
+> backlight buttons if my TV supports them. Use local tools if you have access
 > to my computer; otherwise guide me through the commands.
 
 The connection runs through **ADB on your computer**. A normal ChatGPT web chat
@@ -39,7 +39,7 @@ export BAREHOME_TV='YOUR_ADB_SERIAL_OR_IP:PORT'
 ./tv.sh install /path/to/BareHome.apk
 ./tv.sh run                                 # Check the screen and remote
 ./tv.sh use                                 # Make BareHome the default Home
-./tv.sh brightness-permission               # Optional; see brightness guide
+./tv.sh backlight-permission                # Optional; supported TV only
 ```
 
 To switch back: `./tv.sh restore`. Keep the original launcher installed.
@@ -51,36 +51,48 @@ The [full guide](docs/CONNECT.md) also has direct ADB commands for Windows.
 | --- | --- |
 | D-pad / OK | Select / open an app |
 | Up from the first row | Select Settings |
-| Left from Settings | Reach brightness +, then − |
-| OK on + or − | Change Android's brightness value by 5 percentage points |
+| Left from Settings | Reach backlight +, then − |
+| OK on + or − | Change the supported TV's backlight by 5 percentage points |
 | Down from the header | Return to the app grid |
 | Home | Return to BareHome and the previous selection |
 | Back | Stay on the home screen |
-| Menu | Refresh installed apps and brightness |
+| Menu | Refresh installed apps and backlight |
 
 Apps are alphabetical by default. The list includes TV apps and falls back to
 ordinary Android launcher entries. Installing or removing an app refreshes the
 list when you return home. Long labels are shortened to fit.
 
-The sun controls write Android's system brightness setting; they do not draw a
-dark overlay. **Panel control is unverified.** On the tested CSV4K TV, the setting
-changes, but the user reports no visible difference between 5% and 100%; the TV's
-own Picture brightness remains at 50%. Permission alone does not establish
-hardware support. Read
-[how brightness works](docs/BRIGHTNESS.md).
+The sun controls now change the **actual panel backlight on the tested CSV4K
+TV** using its manufacturer's setting. This fixes the ineffective Android
+brightness control in 0.3.0. Other TVs display an em dash: there is no generic
+brightness fallback. The launcher still works without backlight access.
+
+After installing 0.3.1, grant the optional permission once with
+`./tv.sh backlight-permission`. The old `WRITE_SETTINGS` grant is insufficient.
+See [how to enable and test backlight controls](docs/BRIGHTNESS.md), including
+the permission's scope and exact supported device identifiers.
 
 ## Compatibility
 
 Early beta. Requires Android TV or Google TV with Android 8.0 / API 26 or newer.
 The app has no native libraries, so it is not tied to a CPU architecture.
-Device testing so far covers a CSV4K TV running Android 11. Other models and newer
-Android versions need testing.
+**One physical TV has been tested:** CSV4K, KTC/Motorola, Android 11 / API 30,
+device `zhongshan`, product `KTC_MOTOROLA_4K_SA_21V2`. Backlight access requires
+all three model/device/product identifiers to match. It is not enabled for
+every Motorola, KTC, MediaTek, or Google TV.
 
-Some manufacturers restrict default Home selection. Brightness works only when
-the device maps Android's brightness setting to its display; an HDMI streaming
-stick cannot be assumed to change the connected TV's backlight. Neither feature
-requires root. If a TV rejects the supported method, keep its existing launcher
-and report the model and Android version.
+On 2026-10-17, a local `0.3.1-backlight-test` build using the same backlight code
+was visibly tested at **16% and 86%**, then restored to 66%. The person watching
+confirmed a clear physical difference; vendor service readbacks matched.
+Settings → Home round-trip also passed. This was Movie picture mode (9), with
+personal app ordering; the public build defaults to alphabetical ordering.
+HDR, Dolby Vision, other picture modes/firmware, and backlight persistence across
+a reboot have not been tested. Other TV models have not been hardware-tested.
+
+Some manufacturers restrict default Home selection. An HDMI streaming stick
+cannot use this integration to control the connected TV's panel. Neither Home
+selection nor backlight access requires root. If a TV rejects the supported
+method, keep its existing launcher and report the model and Android version.
 
 Accessibility announces the selected item and supports previous/next actions;
 the grid does not yet expose a full set of individual accessibility nodes.
@@ -128,8 +140,10 @@ accounted elsewhere. Speed inside other apps was not established by this test.
 
 BareHome has no network permission, telemetry, account, or cloud service. It
 queries installed launchable apps locally and remembers the selected app. The
-optional brightness feature requests `WRITE_SETTINGS`; no other permission is
-declared.
+optional backlight feature declares `WRITE_SECURE_SETTINGS`, granted explicitly
+through ADB. This is a broad system-settings permission; BareHome's backlight
+code writes only the vendor's `picture_backlight` value. App launching does not
+require it. [Grant and revoke instructions](docs/BRIGHTNESS.md#allow-access-once).
 
 [MIT licensed](LICENSE). Small, focused contributions are welcome. Include your
 TV model and Android version in compatibility reports; omit IP addresses, ADB

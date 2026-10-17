@@ -153,13 +153,16 @@ Press Home on the remote and verify BareHome appears. It should remain the Home
 app after restarting, subject to the TV manufacturer's behavior. A computer or
 ADB connection is not needed for everyday use.
 
-Optional brightness access:
+Optional backlight access after installing 0.3.1, on the supported CSV4K only:
 
 ```sh
-./tv.sh brightness-permission
+./tv.sh backlight-permission
 ```
 
-Read [the brightness guide](BRIGHTNESS.md) before testing those controls.
+Read [the backlight guide](BRIGHTNESS.md) for the exact supported identifiers,
+permission scope, direct ADB grant/revoke commands, and a visible test. Existing
+0.3.0 `WRITE_SETTINGS` access does not enable the new controls. The old helper
+name `brightness-permission` remains an alias for the new grant.
 
 ### Direct ADB commands, including Windows
 
@@ -224,4 +227,4 @@ network, or USB debugging on the TV. In legacy TCP mode, `adb -s TV_SERIAL usb`
 can stop the network listener on supported devices. `adb disconnect` disconnects
 your computer; it does not necessarily disable the TV's listener.
 
-BareHome and previously granted brightness access continue working without ADB.
+BareHome and previously granted backlight access work without an ADB connection.

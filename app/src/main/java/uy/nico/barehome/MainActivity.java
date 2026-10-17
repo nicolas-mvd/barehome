@@ -1,5 +1,6 @@
 package uy.nico.barehome;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -11,7 +12,6 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -27,6 +27,9 @@ import java.util.Map;
 
 /** One Activity, one View. No services, workers, network, images, or idle callbacks. */
 public final class MainActivity extends Activity implements LauncherView.Listener {
+    // This OEM's picture service observes the same key used by its Backlight settings page.
+    private static final String BACKLIGHT_SETTING = "picture_backlight";
+
     static final class App {
         final String label;
         final ComponentName component;
@@ -157,9 +160,37 @@ public final class MainActivity extends Activity implements LauncherView.Listene
     }
 
     private int brightnessPercent() {
-        int value = Settings.System.getInt(getContentResolver(),
-                Settings.System.SCREEN_BRIGHTNESS, -1);
-        return value < 0 ? -1 : Math.round(Math.min(255, value) * 100f / 255);
+        if (!supportsBacklight()) return -1;
+        try {
+            int value = Settings.Global.getInt(getContentResolver(), BACKLIGHT_SETTING, -1);
+            return value >= 0 && value <= 100 ? value : -1;
+        } catch (SecurityException denied) {
+            return -1;
+        }
+    }
+
+    private static boolean supportsBacklight() {
+        return "CSV4K".equals(Build.MODEL)
+                && "zhongshan".equals(Build.DEVICE)
+                && "KTC_MOTOROLA_4K_SA_21V2".equals(Build.PRODUCT);
+    }
+
+    private boolean automaticBacklightEnabled() {
+        String mode;
+        switch (Settings.Global.getInt(getContentResolver(), "picture_mode", -1)) {
+            case 0: mode = "user"; break;
+            case 7: mode = "standard"; break;
+            case 3: mode = "vivid"; break;
+            case 2: mode = "sport"; break;
+            case 9: mode = "movie"; break;
+            case 10: mode = "game"; break;
+            case 11: mode = "energy_saving"; break;
+            default: mode = "others"; break;
+        }
+        // These missing-key defaults match this device's OEM picture service.
+        return Settings.Global.getInt(getContentResolver(), "picture_als", 0) != 0
+                || Settings.Global.getInt(getContentResolver(),
+                        "key_picture_mode_" + mode + "_auto_backlight", 0) != 0;
     }
 
     private void refreshBrightness() {
@@ -167,34 +198,37 @@ public final class MainActivity extends Activity implements LauncherView.Listene
     }
 
     @Override public void adjustBrightness(int direction) {
-        if (!Settings.System.canWrite(this)) {
-            Toast.makeText(this, "Allow BareHome to change system settings", Toast.LENGTH_SHORT).show();
-            try {
-                startActivity(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                        Uri.parse("package:" + getPackageName())));
-            } catch (ActivityNotFoundException | SecurityException unavailable) {
-                Toast.makeText(this, "Enable Modify system settings for BareHome in Settings",
-                        Toast.LENGTH_LONG).show();
-            }
+        int current = brightnessPercent();
+        home.setBrightness(current);
+        if (current < 0) {
+            Toast.makeText(this, "Backlight control is unavailable on this TV", Toast.LENGTH_SHORT).show();
             return;
         }
-        int current = brightnessPercent();
-        if (current < 0) {
-            Toast.makeText(this, "Screen brightness is unavailable", Toast.LENGTH_SHORT).show();
+        if (checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS)
+                != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Backlight control needs the one-time ADB permission",
+                    Toast.LENGTH_LONG).show();
             return;
         }
         int next = Math.max(Config.BRIGHTNESS_MIN_PERCENT, Math.min(100,
                 current + Integer.signum(direction) * Config.BRIGHTNESS_STEP_PERCENT));
+        if (next == current) return;
         try {
-            boolean manual = Settings.System.putInt(getContentResolver(),
-                    Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
-            boolean changed = manual && Settings.System.putInt(getContentResolver(),
-                    Settings.System.SCREEN_BRIGHTNESS, Math.round(next * 255f / 100));
-            if (!changed) Toast.makeText(this, "Could not change brightness", Toast.LENGTH_SHORT).show();
+            if (automaticBacklightEnabled()) {
+                Toast.makeText(this, "Disable automatic backlight in Picture settings first",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            boolean changed = Settings.Global.putInt(getContentResolver(), BACKLIGHT_SETTING, next);
+            int actual = brightnessPercent();
+            home.setBrightness(actual);
+            if (!changed || actual != next) {
+                Toast.makeText(this, "Could not change backlight", Toast.LENGTH_SHORT).show();
+            }
         } catch (SecurityException denied) {
-            Toast.makeText(this, "Brightness permission is unavailable", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Backlight permission is unavailable", Toast.LENGTH_SHORT).show();
+            refreshBrightness();
         }
-        refreshBrightness();
     }
 
     private void collectApps(String category, Map<String, App> byPackage) {
