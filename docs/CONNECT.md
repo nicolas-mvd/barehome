@@ -176,7 +176,7 @@ your current launcher as the default using the TV, then resolve it again.
 Install and preview:
 
 ```text
-adb -s TV_SERIAL install --no-incremental -r /path/to/BareHome.apk
+adb -s TV_SERIAL install --user 0 --no-incremental -r /path/to/BareHome.apk
 adb -s TV_SERIAL shell am start --user 0 -n uy.nico.barehome/.MainActivity
 ```
 
