@@ -84,7 +84,7 @@ Version 1.2 adds on-demand state confirmation for BareRemote 0.3. Preserve the
 strict `/state` and `/toggle` query format, private same-subnet callback checks,
 HMAC authentication, bounded replay cache and one-shot receiver lifetime.
 The TV sends one outbound UDP reply; it never listens for network requests.
-`INTERNET` is used only for that local reply. Querying must not write picture
+`INTERNET` is used for that local reply and the bounded GitHub updater. Querying must not write picture
 settings. Toggle decisions come from TV state, not the phone's cached icon.
 Report `custom` when current levels or Picture mode differ from the selected
 preset. An idle widget is last-confirmed state, not continuous observation.
@@ -203,12 +203,20 @@ TV screenshots containing personal app content without the user's authorization.
 
 ## When changing source
 
-Preserve the design: one visible Activity, one custom View, built-in Android Java APIs,
-no runtime dependencies, network listeners, services, scheduled work, or idle redraw loop.
-The only additional Activity is the short, windowless explicit remote-command
-entry point requested for BareRemote; do not turn it into another UI or service.
+Preserve the design: one launcher Activity and custom View, built-in Android Java
+APIs, no runtime dependencies, network listeners, services, scheduled work, or idle
+redraw loop. The user-requested updater adds a separate native update screen and
+private read-only APK provider. Read `docs/UPDATES.md`: check GitHub only while Home
+is visible, at most once per 24 hours, or on an explicit manual check. No automatic
+APK downloads. Preserve URL/size/deadline/checksum/package/version/signer validation
+and Android's installation confirmation. Publish assets before updating `update.json`.
+A personal build must capture its original compiled app order locally before its
+first public-APK update; never install an alphabetical bootstrap over it blindly.
+The short, windowless explicit remote-command entry point requested for BareRemote
+must remain separate from this UI.
 Its non-exported reply receiver may perform only the bounded outbound local
-callback described above; no general networking or persistent work is authorized.
+callback described above. Outside the bounded GitHub updater, no general networking
+or persistent work is authorized.
 Use `Config.java` for simple configuration. Keep app launch and Home recovery
 working even when optional backlight is unsupported.
 

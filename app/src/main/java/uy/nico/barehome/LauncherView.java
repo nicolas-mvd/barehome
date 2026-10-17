@@ -20,15 +20,19 @@ final class LauncherView extends View {
         void toggleMode();
         void editMode();
         boolean saveMode(boolean night, int backlight, int brightness);
+        void openUpdates();
     }
 
     private static final String HINT = "D-PAD move   OK open   MENU refresh";
     private static final String MODE_HINT = "OK switch Day / Night   HOLD OK edit mode";
+    private static final String SETTINGS_HINT = "OK open settings   HOLD OK check updates";
+    private static final String UPDATE_HINT = "OK update BareHome";
     private static final String EDIT_HINT = "UP / DOWN select   LEFT / RIGHT adjust   OK confirm   BACK cancel";
     private static final int HEADER_NONE = -1;
-    private static final int HEADER_MODE = 0;
-    private static final int HEADER_SETTINGS = 1;
-    private static final int HEADER_COUNT = 2;
+    private static final int HEADER_UPDATE = 0;
+    private static final int HEADER_MODE = 1;
+    private static final int HEADER_SETTINGS = 2;
+    private static final int HEADER_COUNT = 3;
     private static final int NO_TOUCH = Integer.MIN_VALUE;
     private static final int EDIT_BACKLIGHT = 0;
     private static final int EDIT_BRIGHTNESS = 1;
@@ -54,10 +58,10 @@ final class LauncherView extends View {
     private final float modeWidth;
     private final float touchSlop;
     private final int holdTimeout = ViewConfiguration.getLongPressTimeout();
-    private final Runnable modeHold = new Runnable() {
+    private final Runnable selectionHold = new Runnable() {
         @Override public void run() {
             if ((activationKey != KeyEvent.KEYCODE_UNKNOWN || touched != NO_TOUCH)
-                    && isModeSelected() && hasWindowFocus()) performLongClick();
+                    && isLongPressTarget() && hasWindowFocus()) performLongClick();
         }
     };
 
@@ -65,6 +69,7 @@ final class LauncherView extends View {
     private String[] labels = new String[0];
     private String positionLabel = "0 apps";
     private boolean night;
+    private boolean updateAvailable;
     private int selected;
     private int headerFocused = HEADER_NONE;
     private int firstRow;
@@ -73,6 +78,7 @@ final class LauncherView extends View {
     private float cellWidth;
     private float settingsLeft;
     private float modeLeft;
+    private float updateLeft;
     private int activationKey = KeyEvent.KEYCODE_UNKNOWN;
     private long activationDownTime;
     private int touched = NO_TOUCH;
@@ -150,6 +156,17 @@ final class LauncherView extends View {
         invalidate();
     }
 
+    void setUpdateAvailable(boolean available) {
+        if (updateAvailable == available) return;
+        updateAvailable = available;
+        if (!available && headerFocused == HEADER_UPDATE) {
+            cancelInput();
+            headerFocused = HEADER_MODE;
+            describeSelection();
+        }
+        invalidate();
+    }
+
     void openModeEditor(boolean night, int backlight, int brightness) {
         cancelInput();
         editorNight = night;
@@ -178,6 +195,7 @@ final class LauncherView extends View {
         visibleRows = Math.max(1, (int) ((height - margin - 36 * density - gridTop) / rowHeight));
         settingsLeft = width - margin - settingsWidth;
         modeLeft = settingsLeft - 20 * density - modeWidth;
+        updateLeft = modeLeft - 20 * density - headerHeight;
         float editorWidth = Math.min(width - 2 * margin, 680 * density);
         editorLeft = (width - editorWidth) / 2;
         editorRight = editorLeft + editorWidth;
@@ -210,9 +228,10 @@ final class LauncherView extends View {
             return;
         }
         float centerY = margin + headerHeight / 2;
-        if (margin + small.measureText("barehome") + 24 * density <= modeLeft) {
+        if (margin + small.measureText("barehome") + 24 * density <= (updateAvailable ? updateLeft : modeLeft)) {
             canvas.drawText("barehome", margin, centerY + smallOffset, small);
         }
+        if (updateAvailable) drawUpdateButton(canvas, centerY);
         boolean modeFocused = headerFocused == HEADER_MODE;
         int modeBackground = modeFocused ? Config.FOREGROUND : Config.BACKGROUND;
         int modeForeground = modeFocused ? Config.BACKGROUND : Config.FOREGROUND;
@@ -249,10 +268,28 @@ final class LauncherView extends View {
             canvas.drawText("No apps", margin + padding, gridTop + rowHeight / 2 + textOffset, text);
         }
         float footer = getHeight() - margin + smallOffset;
-        canvas.drawText(isModeSelected() ? MODE_HINT : HINT, margin, footer, small);
+        String hint = isModeSelected() ? MODE_HINT : headerFocused == HEADER_SETTINGS
+                ? SETTINGS_HINT : headerFocused == HEADER_UPDATE ? UPDATE_HINT : HINT;
+        canvas.drawText(hint, margin, footer, small);
         small.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText(positionLabel, getWidth() - margin, footer, small);
         small.setTextAlign(Paint.Align.LEFT);
+    }
+
+    private void drawUpdateButton(Canvas canvas, float centerY) {
+        boolean focused = headerFocused == HEADER_UPDATE;
+        if (focused) {
+            fill.setColor(Config.FOREGROUND);
+            canvas.drawRect(updateLeft, margin, updateLeft + headerHeight, margin + headerHeight, fill);
+        }
+        icon.setColor(focused ? Config.BACKGROUND : Config.FOREGROUND);
+        float x = updateLeft + headerHeight / 2;
+        canvas.drawLine(x, centerY - 10 * density, x, centerY + 5 * density, icon);
+        canvas.drawLine(x - 6 * density, centerY - density, x, centerY + 5 * density, icon);
+        canvas.drawLine(x + 6 * density, centerY - density, x, centerY + 5 * density, icon);
+        canvas.drawLine(x - 9 * density, centerY + 10 * density, x + 9 * density, centerY + 10 * density, icon);
+        canvas.drawLine(x - 9 * density, centerY + 6 * density, x - 9 * density, centerY + 10 * density, icon);
+        canvas.drawLine(x + 9 * density, centerY + 6 * density, x + 9 * density, centerY + 10 * density, icon);
     }
 
     private void drawModeIcon(Canvas canvas, float x, float y, boolean night, int foreground, int background) {
@@ -331,8 +368,8 @@ final class LauncherView extends View {
         int previousHeader = headerFocused;
         if (headerFocused != HEADER_NONE) {
             if (key == KeyEvent.KEYCODE_DPAD_DOWN && apps.length > 0) headerFocused = HEADER_NONE;
-            else if (key == KeyEvent.KEYCODE_DPAD_LEFT) headerFocused = HEADER_MODE;
-            else if (key == KeyEvent.KEYCODE_DPAD_RIGHT) headerFocused = HEADER_SETTINGS;
+            else if (key == KeyEvent.KEYCODE_DPAD_LEFT) headerFocused = Math.max(firstHeader(), headerFocused - 1);
+            else if (key == KeyEvent.KEYCODE_DPAD_RIGHT) headerFocused = Math.min(HEADER_SETTINGS, headerFocused + 1);
         } else if (apps.length > 0) {
             switch (key) {
                 case KeyEvent.KEYCODE_DPAD_UP:
@@ -376,6 +413,12 @@ final class LauncherView extends View {
         return !editorOpen && headerFocused == HEADER_MODE;
     }
 
+    private boolean isLongPressTarget() {
+        return !editorOpen && (headerFocused == HEADER_MODE || headerFocused == HEADER_SETTINGS);
+    }
+
+    private int firstHeader() { return updateAvailable ? HEADER_UPDATE : HEADER_MODE; }
+
     private void describeSelection() {
         String description;
         if (editorOpen) {
@@ -388,6 +431,10 @@ final class LauncherView extends View {
         } else if (headerFocused == HEADER_MODE) {
             description = (night ? "Night" : "Day") + " mode selected. Click to switch to "
                     + (night ? "Day" : "Night") + ". Hold OK to edit selected mode.";
+        } else if (headerFocused == HEADER_UPDATE) {
+            description = "BareHome update available. Click to review and install.";
+        } else if (headerFocused == HEADER_SETTINGS) {
+            description = "Settings. Click to open TV settings. Hold OK to check BareHome updates.";
         } else {
             description = headerFocused == HEADER_SETTINGS || apps.length == 0 ? "Settings" : apps[selected].label;
         }
@@ -402,7 +449,7 @@ final class LauncherView extends View {
     }
 
     private void cancelInput() {
-        removeCallbacks(modeHold);
+        removeCallbacks(selectionHold);
         activationKey = KeyEvent.KEYCODE_UNKNOWN;
         touched = NO_TOUCH;
     }
@@ -424,8 +471,8 @@ final class LauncherView extends View {
                     cancelInput();
                     activationKey = keyCode;
                     activationDownTime = event.getDownTime();
-                    if (isSelectKey(keyCode) && isModeSelected()) postDelayed(modeHold, holdTimeout);
-                } else if (activationKey == keyCode && isSelectKey(keyCode) && isModeSelected()
+                    if (isSelectKey(keyCode) && isLongPressTarget()) postDelayed(selectionHold, holdTimeout);
+                } else if (activationKey == keyCode && isSelectKey(keyCode) && isLongPressTarget()
                         && (event.isLongPress() || event.getEventTime() - activationDownTime >= holdTimeout)) {
                     performLongClick();
                 }
@@ -446,10 +493,10 @@ final class LauncherView extends View {
             case KeyEvent.KEYCODE_MENU:
             case KeyEvent.KEYCODE_SETTINGS:
                 boolean activate = activationKey == keyCode && !event.isCanceled();
-                boolean heldMode = activate && isSelectKey(keyCode) && isModeSelected()
+                boolean heldSelection = activate && isSelectKey(keyCode) && isLongPressTarget()
                         && event.getEventTime() - activationDownTime >= holdTimeout;
                 cancelInput();
-                if (heldMode) performLongClick();
+                if (heldSelection) performLongClick();
                 else if (activate) {
                     if (keyCode == KeyEvent.KEYCODE_MENU) {
                         if (!editorOpen) listener.refresh();
@@ -494,6 +541,8 @@ final class LauncherView extends View {
             } else if (editorRow == EDIT_CANCEL) closeModeEditor();
         } else if (headerFocused == HEADER_MODE) {
             listener.toggleMode();
+        } else if (headerFocused == HEADER_UPDATE && updateAvailable) {
+            listener.openUpdates();
         } else {
             listener.launch(headerFocused == HEADER_SETTINGS || apps.length == 0 ? null : apps[selected]);
         }
@@ -501,9 +550,11 @@ final class LauncherView extends View {
     }
 
     @Override public boolean performLongClick() {
-        if (!isModeSelected()) return false;
+        if (!isLongPressTarget()) return false;
+        boolean edit = isModeSelected();
         cancelInput();
-        listener.editMode();
+        if (edit) listener.editMode();
+        else listener.openUpdates();
         return true;
     }
 
@@ -516,6 +567,7 @@ final class LauncherView extends View {
         if (y >= margin && y <= margin + headerHeight) {
             if (x >= settingsLeft && x <= getWidth() - margin) return HEADER_SETTINGS - HEADER_COUNT;
             if (x >= modeLeft && x <= modeLeft + modeWidth) return HEADER_MODE - HEADER_COUNT;
+            if (updateAvailable && x >= updateLeft && x <= updateLeft + headerHeight) return HEADER_UPDATE - HEADER_COUNT;
         }
         if (x < margin || x >= getWidth() - margin || y < gridTop
                 || y >= gridTop + visibleRows * rowHeight) return NO_TOUCH;
@@ -536,7 +588,7 @@ final class LauncherView extends View {
             else {
                 headerFocused = touched < 0 ? touched + HEADER_COUNT : HEADER_NONE;
                 if (headerFocused == HEADER_NONE) selected = touched;
-                if (isModeSelected()) postDelayed(modeHold, holdTimeout);
+                if (isLongPressTarget()) postDelayed(selectionHold, holdTimeout);
             }
             describeSelection();
             invalidate();
@@ -572,8 +624,8 @@ final class LauncherView extends View {
         info.setScrollable(true);
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD);
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_BACKWARD);
-        info.setLongClickable(isModeSelected());
-        if (isModeSelected()) info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_LONG_CLICK);
+        info.setLongClickable(isLongPressTarget());
+        if (isLongPressTarget()) info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_LONG_CLICK);
         if (editorOpen && editorRow <= EDIT_BRIGHTNESS) {
             info.addAction(new AccessibilityNodeInfo.AccessibilityAction(ACTION_DECREASE, "Decrease level"));
             info.addAction(new AccessibilityNodeInfo.AccessibilityAction(ACTION_INCREASE, "Increase level"));
@@ -614,7 +666,7 @@ final class LauncherView extends View {
                 editorRow = Math.max(EDIT_BACKLIGHT, Math.min(EDIT_CANCEL, editorRow + (forward ? 1 : -1)));
             } else if (headerFocused != HEADER_NONE) {
                 if (forward && headerFocused < HEADER_SETTINGS) headerFocused++;
-                else if (!forward && headerFocused > HEADER_MODE) headerFocused--;
+                else if (!forward && headerFocused > firstHeader()) headerFocused--;
                 else if (forward && apps.length > 0) {
                     headerFocused = HEADER_NONE;
                     selected = 0;

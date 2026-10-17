@@ -2,14 +2,15 @@
 
 A tiny home screen for Android TV. Text, a remote, your apps.
 
-**1.2 prerelease:** adds TV-confirmed mode reporting for BareRemote 0.3. Its new
-reply path still awaits physical-TV testing. [Download the prerelease](https://github.com/nicolas-mvd/barehome/releases/tag/v1.2);
-the latest stable release remains 1.1.
+**1.3:** adds an update button beside Day/Night when a newer release is available.
+The launcher checks GitHub only when Home becomes visible, at most once a day;
+installation always needs your confirmation.
 
 Inspired by the suckless approach: small code, few moving parts, configuration in
-source. One visible Activity and Canvas View. Android's built-in Java APIs. No libraries,
+source. One launcher Activity and Canvas View, plus a small update screen. Android's built-in Java APIs. No libraries,
 Gradle, ads, recommendations, artwork, services, or idle polling. The optional
-phone mode check sends one authenticated local-network reply per request.
+phone mode check sends one authenticated local-network reply per request. Update
+checks make one bounded GitHub request when due; there is no idle updater service.
 
 ![BareHome preview](docs/barehome.svg)
 
@@ -52,7 +53,7 @@ The [full guide](docs/CONNECT.md) also has direct ADB commands for Windows.
 
 ## Use
 
-**BareHome 1.2** has one **☀ Day / ☾ Night** button beside Settings. Click to
+**BareHome 1.3** has one **☀ Day / ☾ Night** button beside Settings. Click to
 switch modes; hold OK to customize the selected mode.
 
 | Control | Action |
@@ -110,9 +111,24 @@ match. This bridge requires BareHome 1.1 or newer installed on the TV. On the te
 CSV4K, both the BareRemote app and widget opened the native Inputs list, including
 PlayStation 5; no port was selected during verification.
 
-Apps are alphabetical by default. The list includes TV apps and falls back to
+Apps are alphabetical by default. Version 1.3 saves the initial compiled pinned
+order locally so subsequent public APK updates preserve a personal build's order. The list includes TV apps and falls back to
 ordinary Android launcher entries. Installing or removing an app refreshes the
 list when you return home. Long labels are shortened to fit.
+
+## Updates
+
+A small download-arrow button appears to the left of Day/Night when a newer
+release is available. Select it to download, verify and open Android's install
+confirmation. Hold OK on **Settings** for an immediate check; a short press still
+opens the TV settings. The automatic check happens only on returning Home and at
+most once every 24 hours. It does not wake the TV or download an APK in the background.
+
+Android may ask you to allow BareHome to install unknown apps. Updates preserve
+presets and locally saved app order. Custom builds must first run an updater-enabled
+build with their existing pinned packages before switching to public APKs.
+The first updater-enabled APK needs an ordinary installation; future updates can
+use the launcher. See [update checks and publishing](docs/UPDATES.md).
 
 ## Compatibility
 
@@ -132,8 +148,10 @@ in every TV app.
 The **1.2 prerelease** passes all **37 host tests**, including **113 controller**
 and **97 callback-format/subnet/replay assertions**. Its signed APK's actual
 receiver returned an authenticated `unavailable` response on an unsupported
-Android 15 emulator. Physical-TV verification of the new callback was deferred;
-no 1.2 installation or mode change was made on the owner's TV during this update.
+Android 15 emulator. The later `1.2-personal` installation on the physical CSV4K retained the default
+Home, permissions and picture levels. Two authenticated state queries returned Day
+without changing levels. The owner then confirmed that BareRemote Sync showed the
+sun and tapping switched the TV to Night with the moon icon.
 
 Version **1.1** remote controls were checked on this TV using the signed
 BareRemote **0.2** APK's app and widget. Day/Night reached settings readbacks
@@ -188,7 +206,8 @@ normally has a different signature from the published APK and cannot replace it
 as an in-place update.
 
 Edit [Config.java](app/src/main/java/uy/nico/barehome/Config.java) for app order,
-font size, columns, spacing, and colors. Missing pinned apps
+font size, columns, spacing, and colors. App order is captured on the first run;
+a saved order takes precedence over later compiled defaults. Missing pinned apps
 are ignored. There is no configuration service or dependency stack to maintain.
 
 ## Small by measurement
@@ -206,9 +225,9 @@ accounted elsewhere. Speed inside other apps was not established by this test.
 
 ## Privacy and license
 
-BareHome has no telemetry, account, or cloud service. Its `INTERNET` permission
-is used only for one-shot authenticated picture-state replies on the local
-network; there is no network listener or polling. It queries installed launchable
+BareHome has no telemetry or account. GitHub hosts update metadata and APKs. Its `INTERNET` permission
+is used for one-shot authenticated picture-state replies on the local network
+and bounded GitHub update checks/downloads; there is no network listener or idle polling. It queries installed launchable
 apps locally and remembers the selected app. The
 optional picture controls declare `WRITE_SECURE_SETTINGS`, granted explicitly
 through ADB. This is a broad system-settings permission; BareHome uses it to

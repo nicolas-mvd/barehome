@@ -24,7 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** One visible Activity and View. No services, workers, network, images, or idle callbacks. */
+/** A single home View, with bounded update checks only while Home is visible. */
 public final class MainActivity extends Activity implements LauncherView.Listener {
     static final class App {
         final String label;
@@ -45,6 +45,10 @@ public final class MainActivity extends Activity implements LauncherView.Listene
     private LauncherView home;
     private SharedPreferences preferences;
     private PictureController pictures;
+    private AppUpdates updates;
+    private AppOrder order;
+    private AppOrder.Store orderStore;
+    private boolean resumed;
     private int editorPictureMode = -1;
     private String savedSelection;
     private Intent settingsIntent;
@@ -60,7 +64,15 @@ public final class MainActivity extends Activity implements LauncherView.Listene
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         preferences = getSharedPreferences("selection", MODE_PRIVATE);
+        orderStore = new AppOrder.Store() {
+            @Override public String read() { return preferences.getString("pinned_packages", null); }
+            @Override public boolean save(String packages) {
+                return preferences.edit().putString("pinned_packages", packages).commit();
+            }
+        };
+        order = AppOrder.load(orderStore, Config.PINNED_PACKAGES);
         pictures = new PictureController(this);
+        updates = new AppUpdates(this);
         savedSelection = preferences.getString("component", "");
         settingsIntent = new Intent(Settings.ACTION_SETTINGS);
         ResolveInfo settings = getPackageManager().resolveActivity(
@@ -87,13 +99,22 @@ public final class MainActivity extends Activity implements LauncherView.Listene
 
     @Override protected void onResume() {
         super.onResume();
+        resumed = true;
         fullscreen();
         if (catalogDirty) refresh();
         else refreshMode();
         home.requestFocus();
+        home.setUpdateAvailable(updates.available() != null);
+        updates.check(false, new AppUpdates.Callback() {
+            @Override public void complete(AppUpdates.Release release, String error) {
+                if (resumed) home.setUpdateAvailable(release != null);
+            }
+        });
     }
 
     @Override protected void onPause() {
+        resumed = false;
+        updates.cancel();
         home.closeModeEditor();
         editorPictureMode = -1;
         rememberSelection();
@@ -101,6 +122,7 @@ public final class MainActivity extends Activity implements LauncherView.Listene
     }
 
     @Override protected void onDestroy() {
+        updates.cancel();
         unregisterReceiver(packagesChanged);
         super.onDestroy();
     }
@@ -150,8 +172,8 @@ public final class MainActivity extends Activity implements LauncherView.Listene
         ArrayList<App> apps = new ArrayList<>(byPackage.values());
         Collections.sort(apps, new Comparator<App>() {
             @Override public int compare(App a, App b) {
-                int rank = Integer.compare(Config.rank(a.component.getPackageName()),
-                        Config.rank(b.component.getPackageName()));
+                int rank = Integer.compare(order.rank(a.component.getPackageName()),
+                        order.rank(b.component.getPackageName()));
                 if (rank != 0) return rank;
                 int label = a.label.compareToIgnoreCase(b.label);
                 return label != 0 ? label : a.key().compareTo(b.key());
@@ -182,6 +204,16 @@ public final class MainActivity extends Activity implements LauncherView.Listene
         boolean saved = pictures.saveMode(editorPictureMode, night, backlight, brightness);
         if (saved) home.setMode(pictures.selectedNight());
         return saved;
+    }
+
+    @Override public void openUpdates() {
+        // A personal build captures its compiled order before any public update can replace it.
+        if (!order.persisted()) order = AppOrder.load(orderStore, Config.PINNED_PACKAGES);
+        if (!order.persisted()) {
+            Toast.makeText(this, "Could not save app order. Try again before updating.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        AppUpdates.open(this);
     }
 
     private void collectApps(String category, Map<String, App> byPackage) {

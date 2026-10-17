@@ -1,6 +1,6 @@
 package uy.nico.barehome;
 
-/** Edit, compile, install. No configuration service or settings database. */
+/** Compile-time appearance and initial app order. No configuration service. */
 final class Config {
     private Config() {}
 
@@ -13,14 +13,10 @@ final class Config {
     static final float COLUMN_GAP_DP = 20;
     static final float TEXT_SIZE_SP = 22;
 
-    // Add package names here to pin apps first. Otherwise apps are alphabetical.
+    // Initial order is captured once in app preferences, preserving it across public updates.
+    // Add package names here to pin apps first on a new installation; otherwise alphabetical.
+    // Existing saved order takes precedence over later changes to this compiled list.
     // Example: { "org.videolan.vlc", "com.netflix.ninja" };
     static final String[] PINNED_PACKAGES = {};
 
-    static int rank(String packageName) {
-        for (int i = 0; i < PINNED_PACKAGES.length; i++) {
-            if (PINNED_PACKAGES[i].equals(packageName)) return i;
-        }
-        return PINNED_PACKAGES.length;
-    }
 }
