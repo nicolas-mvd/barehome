@@ -1,6 +1,6 @@
 # Day/Night picture controls
 
-BareHome 1.0 puts one **☀ Day / ☾ Night** button beside Settings. It changes
+BareHome 1.1 puts one **☀ Day / ☾ Night** button beside Settings. It changes
 both the panel's **Backlight** and **Picture → Brightness** on the supported TV.
 The button shows the selected BareHome mode; a short press switches to the other
 mode, and a long press opens the selected mode's settings.
@@ -34,6 +34,54 @@ mode before using them. BareHome does not change the TV's Picture mode itself.
 The Day/Night label identifies the selected preset; external Picture changes
 can make the TV's current levels differ from it.
 
+## From a paired phone
+
+With BareHome **1.1 or newer**, [BareRemote](https://github.com/nicolas-mvd/bareremote)
+can send an explicit Day or Night request over its already paired Android TV
+Remote connection. Upgrade BareHome in place using `adb install -r` or
+`./tv.sh install`, without uninstalling it, to retain saved profiles and the
+existing optional picture permission. The one-time picture permission and
+all compatibility limits below still apply. No extra network listener, service,
+root access, or continuing ADB connection is added to BareHome.
+
+The TV receives one of two exact `ACTION_VIEW` links:
+
+```text
+barehome://picture/day
+barehome://picture/night
+```
+
+Each request applies the corresponding saved preset; repeated Night remains
+Night, and repeated Day remains Day. Values are edited on the TV by holding OK
+on the launcher button. Remote links cannot edit levels, switch the TV's Picture
+mode, bypass the exact model gate, or disable automatic picture controls. All
+other paths, query parameters, and fragments are rejected. Other local TV apps
+may invoke these same two exported links.
+
+A separate activity uses Android's `Theme.NoDisplay`, applies the guarded
+request synchronously, then finishes during `onCreate`. It never launches Home
+and has no Home task affinity. The TV shows a brief success or error message.
+Opening Home later reloads the saved selection. Launching or resuming Home
+still does not apply a preset.
+
+This is a one-way request: a phone's “sent” status does not confirm that the TV
+accepted or visibly applied it. Unsupported TVs and missing picture permission
+remain unsupported. Although the entry point has no window and returns
+immediately, Android can briefly transition the current app's activity state;
+an app that pauses playback in response may still pause. On the tested CSV4K,
+paired BareRemote requests produced settings readbacks of Night **5 / 20** and
+Day **60 / 50**, while SmartTube's playback activity remained the resumed app.
+That is not a viewer's confirmation of uninterrupted playback or panel output.
+
+BareHome 1.1 also accepts `barehome://inputs` to open the TV's own source menu
+through `com.android.tv.action.VIEW_INPUTS`. This separate command never writes
+picture settings or selects a source itself. It needs an exported TV handler,
+but no picture permission or model match. Unsupported devices receive an error
+message. Source selection and Day/Night remain independent controls.
+Both the signed BareRemote 0.2 APK's app and widget opened this native Inputs
+menu on the CSV4K. It listed TV, AV, HDMI 1, HDMI 2, PlayStation 5, HDMI 3, and
+Android TV Home. Verification opened the menu without selecting a source.
+
 ## What the two levels change
 
 **Backlight** controls the panel's illumination. **Picture Brightness** changes
@@ -45,7 +93,7 @@ BareHome writes the manufacturer's `picture_backlight` and `picture_brightness`
 keys in [`Settings.Global`](https://developer.android.com/reference/android/provider/Settings.Global).
 On the tested firmware, the TV's existing Settings service observes those keys
 and applies them through its native picture-control interface. BareHome writes
-only when you switch modes or Save edits. It adds no service, idle polling,
+only when you switch modes, send an explicit remote preset, or Save edits. It adds no service, idle polling,
 dimming overlay, or continuous ADB connection. It does not write Android's
 `screen_brightness` or `screen_brightness_mode`.
 
@@ -84,7 +132,7 @@ across a TV reboot have **not** been tested.
 
 ## Allow access once
 
-Install BareHome 1.0, then confirm the TV's identity through an authorized ADB
+Install BareHome 1.1, then confirm the TV's identity through an authorized ADB
 connection. See [Connect and install](CONNECT.md) for USB and network debugging.
 Replace `TV_SERIAL` with the selected device:
 
@@ -165,6 +213,27 @@ from a TV reboot. Keep raw diagnostics and private device identifiers local.
 
 ## What was tested
 
+Version **1.1** adds host-side checks of the actual shared picture controller
+using an in-memory settings provider. They cover exact remote-link validation,
+explicit preset selection and repeat requests, startup without picture writes,
+model/permission/automatic-control/Picture-mode guards, failed write and failed
+preference-save recovery, and shared state between Home and remote requests.
+The source-link allowlist is covered too, with **87 controller/command
+assertions** in the host harness.
+
+On **2026-10-17**, physical CSV4K checks through the signed BareRemote **0.2**
+APK's app and widget reached the stored Night **5 / 20** and Day **60 / 50**
+levels; the same SmartTube playback activity remained resumed. Both app and
+widget source buttons opened the native Inputs list containing TV, AV, HDMI 1,
+HDMI 2, PlayStation 5, HDMI 3, and Android TV Home. No source was selected during
+verification. The final recorded levels were **60 / 50**, in Movie mode (9).
+
+The installed TV build was `1.1-personal` (code 9), signed with the existing key
+and retaining private app ordering. The public `1.1` APK has the same remote
+control implementation and uses alphabetical ordering. These readbacks and
+activity/menu checks do not measure panel output, establish compatibility with
+another TV, or confirm uninterrupted playback to a viewer.
+
 On **2026-10-17**, the owner tested the new Day/Night development build on the
 CSV4K above and reported that it works. That is an owner-reported functional
 check, not a separate scripted result for each long/short press, Save/Cancel,
@@ -203,3 +272,9 @@ Its number changed, but the CSV4K panel did not visibly respond between 5% and
 100%, and Picture Brightness stayed at 50. The earlier claim of working panel
 control was retracted. Version 0.3.1 replaced that path with the visibly tested
 vendor backlight integration used in 1.0.
+
+On the repeated 2026-10-17 phone-remote comparison, the owner confirmed that the
+Night 5 / 20 to Day 60 / 50 change was clearly visible. The request came from the
+signed BareRemote 0.2.0 APK on the Android 15 emulator. This confirms the visible
+preset change on the tested panel; it does not establish uninterrupted playback
+in every TV app.

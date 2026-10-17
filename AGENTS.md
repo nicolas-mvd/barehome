@@ -80,12 +80,31 @@ the identity kind.
 
 ## Day/Night picture controls
 
-Read `docs/BRIGHTNESS.md`. Version 1.0 has one sun/moon Day/Night button beside
+Read `docs/BRIGHTNESS.md`. Version 1.1 has one sun/moon Day/Night button beside
 Settings. It shows the selected BareHome preset. Short OK applies the other
 preset; long OK edits the selected preset's Backlight (5–100) and Picture
 Brightness (0–100), in one-point steps. Save applies and persists both levels;
 Cancel/Back discards edits. There is no separate backlight selector or Restore
 button.
+
+Version 1.1 also accepts exact `ACTION_VIEW` requests for
+`barehome://picture/day` and `barehome://picture/night`. Its separate windowless
+activity applies only saved presets through the same `PictureController`, then
+finishes in `onCreate`. It never starts Home, accepts arbitrary picture values,
+or adds a network listener. Keep its task affinity empty and finish before
+`onResume`; `Theme.NoDisplay` is not a long-running background component.
+Do not claim uninterrupted playback or successful panel changes from a phone's
+“sent” status. Physical CSV4K checks reached stored Night 5 / 20 and Day 60 / 50
+levels with SmartTube's playback activity still resumed; that is not a viewer's
+confirmation of uninterrupted playback or panel output. Other TV apps can invoke
+the two exported links. Preserve all of the guards below.
+
+The same short entry point accepts only one additional exact URI,
+`barehome://inputs`, dispatching the TV's existing
+`com.android.tv.action.VIEW_INPUTS` menu. It checks that the handler is exported
+and enabled and reports unavailable/permission errors without crashing. This
+command does not select a port, need picture permission, or use the model gate.
+Do not add arbitrary intent targets or URI-supplied values.
 
 - Require all three exact identifiers: model `CSV4K`, device `zhongshan`, product
   `KTC_MOTOROLA_4K_SA_21V2`. Only one physical KTC/Motorola TV, Android 11 / API 30,
@@ -129,6 +148,17 @@ button.
 
 ### Evidence and limits
 
+Version 1.1 was checked on the same CSV4K on 2026-10-17 using the signed
+BareRemote 0.2 APK's app and widget. Explicit Night/Day requests reached settings
+readbacks of 5 / 20 and 60 / 50 while the same SmartTube playback activity
+remained resumed. Both source buttons opened the native Inputs list containing
+TV, AV, HDMI 1, HDMI 2, PlayStation 5, HDMI 3, and Android TV Home. No port was
+selected. Final recorded levels were 60 / 50 in Movie mode (9). These are
+readback/activity/menu checks, not a viewer's confirmation of uninterrupted
+playback or panel output. The TV used `1.1-personal` (code 9) to preserve private
+app ordering; the public 1.1 APK has the same control code and alphabetical
+ordering. Host coverage adds 87 picture-controller/command assertions.
+
 On 2026-10-17, the owner reported testing the Day/Night development build and
 said it works. Separate checks of `0.3.2-modes-test` (code 7) established
 installation, matching signature, default BareHome Home, unchanged 50 / 50 levels
@@ -163,8 +193,10 @@ TV screenshots containing personal app content without the user's authorization.
 
 ## When changing source
 
-Preserve the design: one Activity, one custom View, built-in Android Java APIs,
+Preserve the design: one visible Activity, one custom View, built-in Android Java APIs,
 no runtime dependencies, network, services, scheduled work, or idle redraw loop.
+The only additional Activity is the short, windowless explicit remote-command
+entry point requested for BareRemote; do not turn it into another UI or service.
 Use `Config.java` for simple configuration. Keep app launch and Home recovery
 working even when optional backlight is unsupported.
 
@@ -173,8 +205,15 @@ Use `BAREHOME_SDK`, `ANDROID_HOME`, or `ANDROID_SDK_ROOT` for the SDK location.
 The signed output is `build/BareHome.apk`; preserve the same private signing key
 for compatible updates. Run relevant build and device checks, but do not install
 or change a user's TV merely because you are editing documentation.
+Run host tests with `python3 -m unittest discover -s tests -p 'test_*.py'`.
 
 Report observed performance honestly. Process PSS is not total device memory;
 an idle sample is not proof of zero CPU use forever. Historical measurements on
 one Android 11 TV do not establish performance on every model or speedups inside
 other apps.
+
+On the repeated 2026-10-17 phone-remote comparison, the owner confirmed that the
+Night 5 / 20 to Day 60 / 50 change was clearly visible. The request came from the
+signed BareRemote 0.2.0 APK on the Android 15 emulator. This confirms the visible
+preset change on the tested panel; it does not establish uninterrupted playback
+in every TV app.

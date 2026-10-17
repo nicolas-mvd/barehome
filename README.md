@@ -3,7 +3,7 @@
 A tiny home screen for Android TV. Text, a remote, your apps.
 
 Inspired by the suckless approach: small code, few moving parts, configuration in
-source. One Activity. One Canvas View. Android's built-in Java APIs. No libraries,
+source. One visible Activity and Canvas View. Android's built-in Java APIs. No libraries,
 Gradle, ads, recommendations, artwork, network access, services, or idle polling.
 
 ![BareHome preview](docs/barehome.svg)
@@ -47,7 +47,7 @@ The [full guide](docs/CONNECT.md) also has direct ADB commands for Windows.
 
 ## Use
 
-**BareHome 1.0** has one **☀ Day / ☾ Night** button beside Settings. Click to
+**BareHome 1.1** has one **☀ Day / ☾ Night** button beside Settings. Click to
 switch modes; hold OK to customize the selected mode.
 
 | Control | Action |
@@ -77,6 +77,27 @@ once with `./tv.sh backlight-permission`. The old `WRITE_SETTINGS` grant is
 insufficient. Other TVs retain normal app launching, with picture controls
 unavailable. There is no generic Android brightness fallback.
 
+Version **1.1** also lets [BareRemote](https://github.com/nicolas-mvd/bareremote)
+request the saved Day or Night preset from a paired phone. Upgrade BareHome in
+place to retain your profiles and optional picture permission. A tiny windowless
+entry point applies the same checks and immediately exits, without opening the
+Home screen or running a service. It accepts only `barehome://picture/day` and
+`barehome://picture/night`; repeating Day selects Day again rather than toggling.
+The phone cannot read back the selected profile or confirm panel changes through
+this command. On the tested CSV4K, remote requests reached the saved levels while
+SmartTube remained the resumed playback activity; uninterrupted playback still
+needs a viewer's confirmation.
+See [remote picture controls](docs/BRIGHTNESS.md#from-a-paired-phone).
+
+BareRemote's source button uses `barehome://inputs` to open the TV's existing
+input menu. BareHome dispatches `com.android.tv.action.VIEW_INPUTS` rather than
+selecting an HDMI port automatically. The TV must provide an exported handler for
+that action; otherwise a message reports that the source menu is unavailable.
+Source selection does not need the optional picture permission or CSV4K model
+match. This bridge still requires BareHome 1.1 installed on the TV. On the tested
+CSV4K, both the BareRemote app and widget opened the native Inputs list, including
+PlayStation 5; no port was selected during verification.
+
 Apps are alphabetical by default. The list includes TV apps and falls back to
 ordinary Android launcher entries. Installing or removing an app refreshes the
 list when you return home. Long labels are shortened to fit.
@@ -89,6 +110,14 @@ The app has no native libraries, so it is not tied to a CPU architecture.
 device `zhongshan`, product `KTC_MOTOROLA_4K_SA_21V2`. Backlight access requires
 all three model/device/product identifiers to match. It is not enabled for
 every Motorola, KTC, MediaTek, or Google TV.
+
+Version **1.1** remote controls were checked on this TV using the signed
+BareRemote **0.2** APK's app and widget. Day/Night reached settings readbacks
+of **60 / 50** and **5 / 20**, respectively, with the same SmartTube playback
+activity resumed. Both source buttons opened the native Inputs menu. The TV ran
+`1.1-personal` (code 9), preserving its private app order; the published `1.1`
+APK uses the same control code with alphabetical ordering. These checks do not
+confirm uninterrupted playback to a viewer or compatibility with other TVs.
 
 On **2026-10-17**, the owner tested the Day/Night development build on that TV
 and reported that it works. Installation, matching signing certificate, default
@@ -160,8 +189,17 @@ through ADB. This is a broad system-settings permission; BareHome uses it to
 write only the vendor's `picture_backlight` and `picture_brightness` values.
 Each mode's levels and original TV Picture mode are stored locally. App launching
 does not require this permission.
+The exported command entry point can also be invoked by other apps on the TV;
+it accepts only the two saved preset choices and the source menu, never arbitrary
+settings, values, or activity targets.
 [Grant and revoke instructions](docs/BRIGHTNESS.md#allow-access-once).
 
 [MIT licensed](LICENSE). Small, focused contributions are welcome. Include your
 TV model and Android version in compatibility reports; omit IP addresses, ADB
 pairing codes, hardware serial numbers, and private logs.
+
+On the repeated 2026-10-17 phone-remote comparison, the owner confirmed that the
+Night 5 / 20 to Day 60 / 50 change was clearly visible. The request came from the
+signed BareRemote 0.2.0 APK on the Android 15 emulator. This confirms the visible
+preset change on the tested panel; it does not establish uninterrupted playback
+in every TV app.
