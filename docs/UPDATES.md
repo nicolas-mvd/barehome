@@ -8,6 +8,10 @@ BareHome checks when Home becomes visible, at most once per 24 hours. There is n
 
 1. Check for updates and select **Download** when a newer version is available.
 2. After verification, choose **Install**. Android may first ask you to allow BareHome to install unknown apps. Allow this source if you want to use the updater, then return and choose Install again.
+On the tested CSV4K, enabling this source returned to Home. Reopen the update
+button and choose Download again, then Install. The permission remains enabled
+for later updates.
+
 3. Confirm the update in Android's installer. You can cancel instead. The app never silently installs or reboots the device.
 
 Updates install over the existing app. Do not uninstall first: uninstalling removes the app's local data. Picture presets, permission, selection, and saved app ordering remain in place during normal updates. A custom build must run the updater-enabled version once with its existing `Config.PINNED_PACKAGES` before switching to public APKs: this captures its order locally. A public first install remains alphabetical. Subsequent updates honor that saved order.
@@ -43,3 +47,5 @@ Use the built APK's actual version, byte count and SHA-256; do not copy values f
 ## Validation
 
 The update validation suites exercise 80 assertions per app: metadata parsing, official URL/size/hash policy, update versus current/older versions, package and signer mismatch rejection on API 26 and 35, stale callbacks, prompt cancellation during blocked network cleanup, and total deadlines. Emulator checks exercised real GitHub metadata and APK downloads, verification, the unknown-app-source permission return, Android's confirmation, and a completed installation. These checks use isolated lower-version fixtures with the production updater code to make an existing published release eligible; they do not demonstrate every manufacturer's installer.
+
+On 2026-10-17 the physical CSV4K (Android 11) completed the full GitHub-download and native-installer path from a personal updater bootstrap to the published BareHome 1.3 APK (code 11). The updater verified the asset before installation. The captured personal app order remained visible in the public build; default Home, protected-settings permission, Backlight 60 / Brightness 50 and Movie mode 9 were unchanged. The update button disappeared after installation and a long press on Settings reported up to date. Only this TV's installer has been physically tested.

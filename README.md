@@ -210,6 +210,13 @@ font size, columns, spacing, and colors. App order is captured on the first run;
 a saved order takes precedence over later compiled defaults. Missing pinned apps
 are ignored. There is no configuration service or dependency stack to maintain.
 
+Version **1.3** completed its own GitHub-download and Android-installer update on
+that physical CSV4K. The public APK retained the personal bootstrap's saved app
+order, default Home, picture permission and starting 60 / 50 levels. The update
+arrow disappeared afterward; holding Settings confirmed up to date. All **39 host
+tests** pass, including **80 updater assertions** and seven app-order scenarios.
+See [updater validation and the one-time permission flow](docs/UPDATES.md).
+
 ## Small by measurement
 
 The original brightness build, 0.2.0, was approximately **33 KB** and measured

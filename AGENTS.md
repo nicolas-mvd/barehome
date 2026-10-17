@@ -237,3 +237,11 @@ Night 5 / 20 to Day 60 / 50 change was clearly visible. The request came from th
 signed BareRemote 0.2.0 APK on the Android 15 emulator. This confirms the visible
 preset change on the tested panel; it does not establish uninterrupted playback
 in every TV app.
+
+Version 1.3's updater was tested on the physical CSV4K: the personal bootstrap
+captured its compiled app order, downloaded/verified the public APK from GitHub,
+and installed it through Android's own confirmation. Public 1.3 retained that
+order, default Home, WRITE_SECURE_SETTINGS and 60 / 50 in Movie mode 9. The initial
+unknown-source permission returned Home on this firmware; reopening the updater
+and downloading again reached Install. Later checks reported up to date and
+hid the arrow. Do not generalize this installer result to other TV firmware.
