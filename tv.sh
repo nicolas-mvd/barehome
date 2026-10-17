@@ -186,13 +186,13 @@ case "$1" in
                 test "$backlight" -le 100 || die 'picture_backlight is outside 0–100; nothing was granted.' ;;
             *) die 'No valid existing picture_backlight value in 0–100; nothing was granted.' ;;
         esac
-        echo 'Enabling optional backlight controls. WRITE_SECURE_SETTINGS is broader than backlight access; read docs/BRIGHTNESS.md for scope and revocation.'
+        echo 'Enabling optional Day/Night picture controls. WRITE_SECURE_SETTINGS is broader than backlight access; BareHome 1.0 writes backlight and picture brightness. Read docs/BRIGHTNESS.md for scope and revocation.'
         "$ADB" -s "$TV" shell pm grant --user 0 "$PACKAGE" android.permission.WRITE_SECURE_SETTINGS \
             || die 'Could not grant the backlight permission. Install BareHome v0.3.1 or newer first; see docs/BRIGHTNESS.md.'
         # Match a granted permission entry, never its requested-permissions name.
         permissions=$("$ADB" -s "$TV" shell dumpsys package "$PACKAGE") || die 'Could not verify the backlight permission; see docs/BRIGHTNESS.md.'
         printf '%s\n' "$permissions" | tr -d '\r' | grep -Eq '^[[:space:]]*android\.permission\.WRITE_SECURE_SETTINGS: granted=true([,[:space:]]|$)' \
-            || die 'WRITE_SECURE_SETTINGS was not verified as granted; backlight controls are not ready. See docs/BRIGHTNESS.md.'
-        printf 'Verified WRITE_SECURE_SETTINGS. Current backlight: %s%%; its value was not changed. Reopen BareHome to use the controls.\n' "$backlight"
+            || die 'WRITE_SECURE_SETTINGS was not verified as granted; picture controls are not ready. See docs/BRIGHTNESS.md.'
+        printf 'Verified WRITE_SECURE_SETTINGS. Current backlight: %s%%; its value was not changed. Reopen BareHome to use Day/Night controls.\n' "$backlight"
         ;;
 esac

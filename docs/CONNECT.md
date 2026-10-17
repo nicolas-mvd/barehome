@@ -153,13 +153,13 @@ Press Home on the remote and verify BareHome appears. It should remain the Home
 app after restarting, subject to the TV manufacturer's behavior. A computer or
 ADB connection is not needed for everyday use.
 
-Optional backlight access after installing 0.3.1, on the supported CSV4K only:
+Optional Day/Night picture controls after installing 1.0, on the supported CSV4K only:
 
 ```sh
 ./tv.sh backlight-permission
 ```
 
-Read [the backlight guide](BRIGHTNESS.md) for the exact supported identifiers,
+Read [the Day/Night and backlight guide](BRIGHTNESS.md) for the exact supported identifiers,
 permission scope, direct ADB grant/revoke commands, and a visible test. Existing
 0.3.0 `WRITE_SETTINGS` access does not enable the new controls. The old helper
 name `brightness-permission` remains an alias for the new grant.

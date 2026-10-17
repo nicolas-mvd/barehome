@@ -1,20 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
   <title id="title">BareHome</title>
-  <desc id="desc">Illustration of BareHome: a black home screen with a plain app grid, sun brightness controls, and Settings. Installed apps vary by TV.</desc>
+  <desc id="desc">Illustration of BareHome 1.0: a black home screen with a plain app grid, a sun Day mode button, and Settings. Click the mode button to switch Day/Night; hold it to edit backlight and picture brightness. Installed apps vary by TV.</desc>
   <rect width="960" height="540" fill="#080808"/>
   <g font-family="monospace" fill="#92928e" font-size="12">
     <text x="40" y="66">barehome</text>
-    <text x="665" y="66">40%</text>
     <text x="40" y="505">D-PAD move   OK open   MENU refresh</text>
     <text x="920" y="505" text-anchor="end">1 / 9</text>
   </g>
-  <g stroke="#92928e" stroke-width="1.5" fill="none" transform="translate(586 62)">
+  <g stroke="#eeeeea" stroke-width="1.5" fill="none" transform="translate(611 62)">
     <circle r="3.5"/>
     <path d="M-9 0h3M6 0h3M0-9v3M0 6v3M-6.5-6.5l2 2M4.5 4.5l2 2M-6.5 6.5l2-2M4.5-4.5l2-2"/>
   </g>
   <rect x="40" y="112" width="280" height="56" fill="#eeeeea"/>
   <g font-family="monospace" font-weight="bold" font-size="22" fill="#eeeeea">
-    <text x="622" y="69">−</text><text x="718" y="69">+</text><text x="782" y="69">Settings</text>
+    <text x="632" y="69">Day</text><text x="782" y="69">Settings</text>
     <text x="56" y="148" fill="#080808">Browser</text><text x="356" y="148">Files</text><text x="656" y="148">Live TV</text>
     <text x="56" y="212">Music</text><text x="356" y="212">Netflix</text><text x="656" y="212">Photos</text>
     <text x="56" y="276">Plex</text><text x="356" y="276">Prime Video</text><text x="656" y="276">YouTube</text>

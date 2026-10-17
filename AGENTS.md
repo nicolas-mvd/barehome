@@ -30,8 +30,8 @@ before operating a device.
 
 An instruction to install BareHome as the user's launcher authorizes the normal
 reversible installation and default-Home steps. Do not repeatedly ask permission
-for each command. Optional backlight access is covered when the user requested
-working backlight controls or used the README's installation prompt. Explain
+for each command. Optional picture access is covered when the user requested working
+backlight/Day/Night controls or used the README's installation prompt. Explain
 the broader permission scope before granting it as part of those steps. Do not
 interpret an installation request as permission to erase data or reconfigure
 unrelated apps.
@@ -59,7 +59,7 @@ unrelated apps.
    qualified component is also valid), and press the remote's Home key or send
    `KEYCODE_HOME`. Confirm the displayed app. A successful ADB connection alone
    is not successful installation or default selection.
-6. If requested, enable and test backlight as below. Provide the installed
+6. If requested, enable and test Day/Night picture controls as below. Provide the installed
    version, what was verified, any remaining compatibility limits, and the
    exact rollback command. Explain that ordinary use needs neither ADB nor AI.
 7. Help the user turn debugging off afterward. Do not expose ADB through router
@@ -78,45 +78,75 @@ For that fallback, verify the same physical TV before reusing saved state and
 preserve the original Home component across address changes. `status` reports
 the identity kind.
 
-## Backlight checks
+## Day/Night picture controls
 
-- Read `docs/BRIGHTNESS.md`. Version 0.3.1 writes the vendor's global
-  `picture_backlight` setting, not Android's generic brightness setting and not
-  Picture → Brightness. The TV's existing Settings service applies it to the
-  panel. Do not claim universal TV support.
+Read `docs/BRIGHTNESS.md`. Version 1.0 has one sun/moon Day/Night button beside
+Settings. It shows the selected BareHome preset. Short OK applies the other
+preset; long OK edits the selected preset's Backlight (5–100) and Picture
+Brightness (0–100), in one-point steps. Save applies and persists both levels;
+Cancel/Back discards edits. There is no separate backlight selector or Restore
+button.
+
 - Require all three exact identifiers: model `CSV4K`, device `zhongshan`, product
   `KTC_MOTOROLA_4K_SA_21V2`. Only one physical KTC/Motorola TV, Android 11 / API 30,
-  has been tested. The app displays an em dash on other devices and keeps app
-  launching usable. Do not remove this gate to make an untested model look
-  supported.
+  has been tested. Other models retain app launching without picture controls.
+  Do not remove this gate to make an untested model appear supported.
 - Explain that optional `WRITE_SECURE_SETTINGS` is a broad protected-settings
-  permission, while this code writes only `picture_backlight`. Install the new
-  APK before `./tv.sh backlight-permission`, which grants it to BareHome for
-  user 0. The old `WRITE_SETTINGS` grant is insufficient. No root or ongoing ADB
-  connection is needed. If the firmware refuses the grant, report that result.
-- Read and privately record the existing global `picture_backlight` value before
-  testing. If missing or outside 0–100, leave it alone. Preserve the user's
-  original picture mode and automatic backlight/ambient-light settings. The app
-  refuses changes while automatic backlight or ambient-light control is on;
-  let the user choose whether to disable these in Picture settings.
-- Have someone watch the actual panel during a low/high comparison. A successful
-  write, changed number, or Android display/light-service diagnostic is not
-  proof of visible panel control. If only the number changes, open the OEM
-  Settings once and return Home; its service must be running. If it still has
-  no visible effect, report failure and use the TV's native Picture controls.
-- For historical evidence, the local `0.3.1-backlight-test` build was visibly
-  verified at 16% and 86% on 2026-10-17; the native vendor service returned
-  success/readbacks and the original 66% was restored. Picture → Brightness
-  stayed at 50. A Settings/Home round-trip passed. Only Movie mode (9) was
-  tested; HDR, Dolby Vision, other picture modes/firmware, other models, and
-  reboot persistence remain untested. Do not imply the public alphabetical
-  build itself was installed for that test; the test build had personal app
-  ordering and the same backlight implementation.
-- Restore the original backlight after diagnostics unless the user chose a new
-  level. Verify the visible result and a trip away from and back to Home.
-  Explain how to revoke `WRITE_SECURE_SETTINGS` using the documented command.
-  Do not invent vendor service calls, change unrelated picture settings, or add
-  a root dependency to make an unsupported control appear to work.
+  permission. BareHome uses it to write only `picture_backlight` and
+  `picture_brightness`. Install the APK before `./tv.sh backlight-permission`,
+  which grants access for user 0. The old `WRITE_SETTINGS` grant is insufficient.
+  No root or ongoing ADB connection is needed. Report a rejected grant honestly.
+- Privately record both existing levels and the TV Picture mode before testing.
+  Both levels must exist and be within 0–100. Preserve the user's Picture mode
+  and automatic-backlight/ambient-light settings. The app refuses changes while
+  automatic controls are enabled; let the user choose whether to disable them.
+- Day starts from the existing valid pair, clamping its backlight minimum to 5;
+  Night defaults to 5 / 20. Valid legacy Night/Restore data in the original
+  Picture mode migrates its saved pair to Day and selects Night with the 5 / 20
+  default. Existing customized presets are retained. Initialization, migration,
+  startup, and resume must not write TV picture settings.
+- Presets belong to their original TV Picture mode. The app requires returning
+  to that mode before applying them and does not switch it automatically.
+  Day/Night is not the TV's Movie/Standard setting. Its label shows the selected
+  preset, not a measurement or guarantee that external settings still match it.
+- The TV's existing Settings service applies the vendor keys to the panel. Have
+  someone watch the physical image during comparisons. A successful write,
+  changed number, or Android display diagnostic does not prove visible control.
+  If only numbers change, open the OEM Settings once and return Home. If there
+  is still no effect, report failure and use the TV's native Picture controls.
+- Keep testing within the requested scope. Check short press versus long press,
+  one-point adjustments and bounds, Save applying/persisting both values, and
+  Cancel/Back leaving them unchanged. Preserve application data and personal app
+  ordering during upgrades. Never equate a launcher process restart with a TV
+  reboot, or record a check as passed merely because the code intends it.
+- If a write or preference save fails, the app attempts to recover the preceding
+  pair. Inspect both values and recovery before proceeding. Do not clear app
+  data or discard saved presets to hide an incomplete operation.
+- Finish at the user's chosen levels. Picture Brightness changes the signal and
+  low levels can hide shadow detail; neither scale is measured light output.
+  Explain the documented permission-revoke command. Revocation does not restore
+  prior levels, and a Day preset is not a universal rollback.
+
+### Evidence and limits
+
+On 2026-10-17, the owner reported testing the Day/Night development build and
+said it works. Separate checks of `0.3.2-modes-test` (code 7) established
+installation, matching signature, default BareHome Home, unchanged 50 / 50 levels
+at startup, and the simplified Day sun button beside Settings. All 35 automated
+tests passed, including profile scenarios. The owner's broad confirmation is
+not a separate scripted result for each editor, persistence, migration, or
+recovery path. Version 1.0 packages this feature; do not imply the public
+alphabetical build itself was installed for the personal test.
+
+Earlier tests on the same TV confirmed visible backlight changes at 16/86 with
+native service readbacks and restoration to 66, while Picture Brightness stayed
+50. The preceding fixed Night preset was visibly confirmed comfortable at 5/20
+and restored to 5/50 after a launcher process restart, with native readbacks and
+a Settings/Home round trip. See `docs/BRIGHTNESS.md` for the full record.
+
+Only Movie picture mode (9) was tested. HDR, Dolby Vision, other picture modes,
+firmware, TV models, and persistence across a TV reboot remain untested. Do not
+invent vendor calls, change unrelated settings, or add root to claim support.
 
 ## Recovery and boundaries
 

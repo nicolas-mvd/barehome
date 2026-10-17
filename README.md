@@ -18,7 +18,7 @@ Copy this into ChatGPT or a local coding agent:
 > README, AGENTS.md, docs/CONNECT.md, and docs/BRIGHTNESS.md. Help me connect my TV
 > through wireless or USB debugging, install BareHome, test it, and make it my
 > default launcher. Save my previous launcher so I can switch back. Enable the
-> backlight buttons if my TV supports them. Use local tools if you have access
+> Day/Night picture controls if my TV supports them. Use local tools if you have access
 > to my computer; otherwise guide me through the commands.
 
 The connection runs through **ADB on your computer**. A normal ChatGPT web chat
@@ -47,47 +47,62 @@ The [full guide](docs/CONNECT.md) also has direct ADB commands for Windows.
 
 ## Use
 
+**BareHome 1.0** has one **☀ Day / ☾ Night** button beside Settings. Click to
+switch modes; hold OK to customize the selected mode.
+
 | Control | Action |
 | --- | --- |
 | D-pad / OK | Select / open an app |
 | Up from the first row | Select Settings |
-| Left from Settings | Reach backlight +, then − |
-| OK on + or − | Change the supported TV's backlight by 5 percentage points |
+| Left from Settings | Select Day/Night |
+| Short OK on Day/Night | Apply the other mode's saved levels |
+| Hold OK on Day/Night | Edit the selected mode's Backlight and Picture Brightness |
+| Up / Down in the editor | Choose a setting, Save, or Cancel |
+| Left / Right in the editor | Adjust the selected level by one point |
+| Save / Cancel or Back | Apply and remember edits / discard edits |
 | Down from the header | Return to the app grid |
 | Home | Return to BareHome and the previous selection |
-| Back | Stay on the home screen |
-| Menu | Refresh installed apps and backlight |
+| Back on the home screen | Stay on the home screen |
+| Menu | Refresh installed apps and picture-mode state |
+
+Day and Night each remember **Backlight (5–100)** and **Picture Brightness
+(0–100)**. Night starts at **5 / 20**; Day starts from the TV's existing levels.
+The button shows the selected mode. Starting BareHome does not reapply a preset,
+and there is no background service or polling. The [picture-controls guide](docs/BRIGHTNESS.md)
+explains defaults, upgrades, and the difference between the two settings.
+
+These controls use the manufacturer's actual panel-backlight and picture-signal
+settings on the tested CSV4K. After installing, enable the optional permission
+once with `./tv.sh backlight-permission`. The old `WRITE_SETTINGS` grant is
+insufficient. Other TVs retain normal app launching, with picture controls
+unavailable. There is no generic Android brightness fallback.
 
 Apps are alphabetical by default. The list includes TV apps and falls back to
 ordinary Android launcher entries. Installing or removing an app refreshes the
 list when you return home. Long labels are shortened to fit.
 
-The sun controls now change the **actual panel backlight on the tested CSV4K
-TV** using its manufacturer's setting. This fixes the ineffective Android
-brightness control in 0.3.0. Other TVs display an em dash: there is no generic
-brightness fallback. The launcher still works without backlight access.
-
-After installing 0.3.1, grant the optional permission once with
-`./tv.sh backlight-permission`. The old `WRITE_SETTINGS` grant is insufficient.
-See [how to enable and test backlight controls](docs/BRIGHTNESS.md), including
-the permission's scope and exact supported device identifiers.
-
 ## Compatibility
 
-Early beta. Requires Android TV or Google TV with Android 8.0 / API 26 or newer.
+Requires Android TV or Google TV with Android 8.0 / API 26 or newer.
 The app has no native libraries, so it is not tied to a CPU architecture.
 **One physical TV has been tested:** CSV4K, KTC/Motorola, Android 11 / API 30,
 device `zhongshan`, product `KTC_MOTOROLA_4K_SA_21V2`. Backlight access requires
 all three model/device/product identifiers to match. It is not enabled for
 every Motorola, KTC, MediaTek, or Google TV.
 
-On 2026-10-17, a local `0.3.1-backlight-test` build using the same backlight code
-was visibly tested at **16% and 86%**, then restored to 66%. The person watching
-confirmed a clear physical difference; vendor service readbacks matched.
-Settings → Home round-trip also passed. This was Movie picture mode (9), with
-personal app ordering; the public build defaults to alphabetical ordering.
-HDR, Dolby Vision, other picture modes/firmware, and backlight persistence across
-a reboot have not been tested. Other TV models have not been hardware-tested.
+On **2026-10-17**, the owner tested the Day/Night development build on that TV
+and reported that it works. Installation, matching signing certificate, default
+Home, unchanged picture levels at startup, and the simplified header were also
+checked. All **35 automated tests** passed, including preset scenarios.
+
+Earlier tests on the same TV visibly confirmed backlight changes at 16% and
+86%, and the fixed Night preset at Backlight 5 / Picture Brightness 20. Those
+tests included native-service readbacks. Test builds used personal app ordering;
+the public build uses alphabetical ordering. Only **Movie picture mode (9)**
+was tested. HDR, Dolby Vision, other picture modes/firmware, other TV models,
+and persistence across a TV reboot remain untested. The owner's confirmation
+is not a separate scripted verification of every editor or recovery path.
+See [the full test record](docs/BRIGHTNESS.md#what-was-tested).
 
 Some manufacturers restrict default Home selection. An HDMI streaming stick
 cannot use this integration to control the connected TV's panel. Neither Home
@@ -120,7 +135,7 @@ normally has a different signature from the published APK and cannot replace it
 as an in-place update.
 
 Edit [Config.java](app/src/main/java/uy/nico/barehome/Config.java) for app order,
-font size, columns, spacing, colors, and brightness steps. Missing pinned apps
+font size, columns, spacing, and colors. Missing pinned apps
 are ignored. There is no configuration service or dependency stack to maintain.
 
 ## Small by measurement
@@ -140,11 +155,13 @@ accounted elsewhere. Speed inside other apps was not established by this test.
 
 BareHome has no network permission, telemetry, account, or cloud service. It
 queries installed launchable apps locally and remembers the selected app. The
-optional backlight feature declares `WRITE_SECURE_SETTINGS`, granted explicitly
-through ADB. This is a broad system-settings permission; BareHome's backlight
-code writes only the vendor's `picture_backlight` value. App launching does not
-require it. [Grant and revoke instructions](docs/BRIGHTNESS.md#allow-access-once).
+optional picture controls declare `WRITE_SECURE_SETTINGS`, granted explicitly
+through ADB. This is a broad system-settings permission; BareHome uses it to
+write only the vendor's `picture_backlight` and `picture_brightness` values.
+Each mode's levels and original TV Picture mode are stored locally. App launching
+does not require this permission.
+[Grant and revoke instructions](docs/BRIGHTNESS.md#allow-access-once).
 
 [MIT licensed](LICENSE). Small, focused contributions are welcome. Include your
 TV model and Android version in compatibility reports; omit IP addresses, ADB
-pairing codes, device identifiers, and private logs.
+pairing codes, hardware serial numbers, and private logs.

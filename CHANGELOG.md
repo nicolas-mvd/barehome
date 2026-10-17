@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.0 — Day/Night
+
+- One sun/moon Day/Night button replaces the separate backlight −/+ selector
+  and the local prototype's Restore button. Short OK switches modes.
+- Hold OK to edit each mode's Backlight (5–100) and Picture Brightness (0–100)
+  in one-point steps. Save applies and remembers both values; Cancel/Back
+  discards edits.
+- Night starts at 5 / 20. Day starts from the TV's current valid levels, or the
+  earlier Night prototype's saved pair when upgrading in the original Picture
+  mode. Keep customized presets across updates. Startup and resume do not
+  reapply settings.
+- Reuse the optional `WRITE_SECURE_SETTINGS` grant and exact CSV4K device gate.
+  Require the original Picture mode and refuse changes under automatic backlight
+  or ambient-light control. Attempt recovery after incomplete writes or saves.
+- Keep one Activity and one Canvas View, with no service, polling, network, or
+  runtime dependencies. Update the AI installation and picture-control guides.
+
+On **2026-10-17**, the owner tested the Day/Night development build on the one
+tested CSV4K and reported that it works. Separate installation, signature,
+default-Home, unchanged startup levels, and header checks passed on
+`0.3.2-modes-test` (code 7). All **35 automated tests** passed, including profile
+scenarios. The owner report is not a separate scripted result for every editor,
+persistence, migration, or recovery path. Version 1.0 is code 8; personal test
+builds used custom app ordering, while the public build is alphabetical.
+
+Earlier tests on the same TV confirmed visible backlight changes at 16/86 and
+the fixed Night preset at 5/20, with native service readbacks. Only Movie mode
+(9) was tested. Other TVs, firmware, Picture modes, HDR/Dolby Vision, and
+persistence across a TV reboot remain untested. See [the test record](docs/BRIGHTNESS.md#what-was-tested).
+
 ## 0.3.1 — CSV4K backlight fix
 
 - Replace the ineffective Android system brightness control with the tested

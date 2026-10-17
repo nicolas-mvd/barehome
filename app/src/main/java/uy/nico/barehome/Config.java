@@ -12,8 +12,6 @@ final class Config {
     static final float ROW_HEIGHT_DP = 64;
     static final float COLUMN_GAP_DP = 20;
     static final float TEXT_SIZE_SP = 22;
-    static final int BRIGHTNESS_STEP_PERCENT = 5;
-    static final int BRIGHTNESS_MIN_PERCENT = 5;
 
     // Add package names here to pin apps first. Otherwise apps are alphabetical.
     // Example: { "org.videolan.vlc", "com.netflix.ninja" };
