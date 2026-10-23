@@ -1,7 +1,7 @@
 {
-  "versionCode": 11,
-  "versionName": "1.3",
-  "apkUrl": "https://github.com/nicolas-mvd/barehome/releases/download/v1.3/BareHome.apk",
-  "sha256": "88c2ec863346dedf02408c9036e80f7a4f358ff46f3254e733c8baf921ab482a",
-  "size": 90613
+  "versionCode": 12,
+  "versionName": "1.4",
+  "apkUrl": "https://github.com/nicolas-mvd/barehome/releases/download/v1.4/BareHome.apk",
+  "sha256": "e5f1172f3692832d9351b8769c503a118911d4579625c3b27aa57e10e0ecc83e",
+  "size": 143936
 }
