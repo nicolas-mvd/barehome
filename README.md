@@ -2,8 +2,10 @@
 
 A tiny home screen for Android TV. Text, a remote, your apps.
 
-**1.4:** adds optional Dog Mode for BareRemote: NS NOW / CANAL 10, temporary TV
-energy overrides and exact restoration on exit. See [one-time setup and recovery](docs/DOG_MODE.md).
+**1.4.1:** adds automatic Developer options and USB debugging management to Dog Mode.
+It saves their previous states, turns both off before NS NOW / CANAL 10 starts, and
+restores them together with the TV’s energy settings on exit. Reopen **Set up on TV**
+once to allow this expanded scope. See [one-time setup and recovery](docs/DOG_MODE.md).
 
 Inspired by the suckless approach: small code, few moving parts, configuration in
 source. One launcher Activity and Canvas View, plus small update and consent screens. Android's built-in Java APIs. No libraries,
@@ -53,7 +55,7 @@ The [full guide](docs/CONNECT.md) also has direct ADB commands for Windows.
 
 ## Use
 
-**BareHome 1.4** has one **☀ Day / ☾ Night** button beside Settings. Click to
+**BareHome 1.4.1** has one **☀ Day / ☾ Night** button beside Settings. Click to
 switch modes; hold OK to customize the selected mode.
 
 | Control | Action |
@@ -280,3 +282,14 @@ CSV4K check with BareRemote macOS 0.4.0 and NS NOW 1.1.266 confirmed CANAL 10
 playback, End restoring energy settings/removing the helper, and returning Home.
 The three-hour prompt and long-duration playback have not been physically tested.
 See the [Dog Mode validation record](docs/DOG_MODE.md#physical-validation--2026-10-23).
+
+
+Version **1.4.1** passes all **46 host tests**, including 404 settings-adapter
+assertions for five-value snapshots, debugging write order, exact restoration,
+partial failure and old three-value journal recovery. The signed code 13 APK was
+installed in place on the supported CSV4K. With both debugging settings initially
+On, Start confirmed active and closed the debugging listener before NS NOW opened.
+End confirmed Off; subsequent direct readbacks matched all five originals, with
+the helper removed and picture/display timeout unchanged. The owner reported
+that their tests worked after updating Android to 0.7.1. The three-hour prompt and
+long-duration playback remain physically untested.

@@ -31,6 +31,14 @@ final class DogModeTransaction {
         /** Immutable version of the verified key allowlist and its meanings. */
         String strategy();
         int settingCount();
+        /** Legacy journals can restore only the keys their own strategy actually saved. */
+        default boolean supportsRestore(String strategy, int count) {
+            return strategy().equals(strategy) && settingCount() == count;
+        }
+        default boolean validOriginal(int index, String value) { return true; }
+        /** Ordering is part of the adapter's fixed strategy, never supplied by a remote. */
+        default int disableIndex(int position) { return position; }
+        default int restoreIndex(int position, int count) { return position; }
         String read(int index);
         /** Null restores an originally absent value, rather than inventing its default. */
         boolean write(int index, String value);
@@ -84,16 +92,17 @@ final class DogModeTransaction {
             String[] original = new String[device.settingCount()];
             for (int i = 0; i < original.length; i++) {
                 original[i] = device.read(i);
-                if (!validValue(original[i]) || !validValue(device.disabled(i))) return new Start(UNAVAILABLE, null, false);
+                if (!validValue(original[i]) || !device.validOriginal(i, original[i])
+                        || !validValue(device.disabled(i))) return new Start(UNAVAILABLE, null, false);
             }
             pending = new Journal(device.strategy(), "preparing", newGeneration(), original);
             // The original values must reach disk before even the first setting changes.
             if (!store.save(pending.encode())) return new Start(ERROR, null, false);
             boolean changed = true;
-            for (int i = 0; i < original.length; i++) {
+            for (int i : writeOrder(true, original.length)) {
                 if (!writeAndConfirm(i, device.disabled(i))) { changed = false; break; }
             }
-            if (!changed) {
+            if (!changed || !disabledValuesMatch()) {
                 return new Start(recover(pending) ? ERROR : RESTORE, null, false);
             }
             if (!store.save(pending.phase("starting").encode())) {
@@ -169,7 +178,7 @@ final class DogModeTransaction {
         try {
             Journal saved = load();
             if (saved == null) return device.openHome() && helperRemoved ? OFF : RESTORE;
-            if (!matchesDevice(saved) || !device.canRestore()) return RESTORE;
+            if (!matchesRestoreDevice(saved) || !device.canRestore()) return RESTORE;
             return recover(saved, helperRemoved) ? OFF : RESTORE;
         } catch (RuntimeException failed) {
             return RESTORE;
@@ -182,12 +191,17 @@ final class DogModeTransaction {
         if (!store.save(saved.phase("restoring").encode())) return false;
         boolean restored = true;
         // Continue through all keys even when one restore fails; never discard the originals.
-        for (int i = 0; i < saved.original.length; i++) {
+        for (int i : writeOrder(false, saved.original.length)) {
             try {
                 if (!writeAndConfirm(i, saved.original[i])) restored = false;
             } catch (RuntimeException failed) {
                 restored = false;
             }
+        }
+        // A later write can affect an earlier key; confirm the complete final snapshot too.
+        for (int i = 0; i < saved.original.length; i++) {
+            try { if (!equal(device.read(i), saved.original[i])) restored = false; }
+            catch (RuntimeException failed) { restored = false; }
         }
         if (!restored || !device.openHome()) return false;
         return helperRemoved && store.save("");
@@ -206,13 +220,37 @@ final class DogModeTransaction {
     }
 
     private boolean validDevice() {
-        return device.strategy() != null && device.strategy().matches("[a-z0-9_-]{1,40}")
-                && device.settingCount() > 0 && device.settingCount() <= MAX_VALUES;
+        if (device.strategy() == null || !device.strategy().matches("[a-z0-9_-]{1,40}")
+                || device.settingCount() < 1 || device.settingCount() > MAX_VALUES) return false;
+        writeOrder(true, device.settingCount());
+        writeOrder(false, device.settingCount());
+        return true;
     }
 
     private boolean matchesDevice(Journal saved) {
         return validDevice() && saved.strategy.equals(device.strategy())
-                && saved.original.length == device.settingCount();
+                && saved.original.length == device.settingCount() && matchesRestoreDevice(saved);
+    }
+
+    private boolean matchesRestoreDevice(Journal saved) {
+        if (!validDevice() || !device.supportsRestore(saved.strategy, saved.original.length)) return false;
+        for (int i = 0; i < saved.original.length; i++) {
+            if (!validValue(saved.original[i]) || !device.validOriginal(i, saved.original[i])) return false;
+        }
+        writeOrder(false, saved.original.length);
+        return true;
+    }
+
+    private int[] writeOrder(boolean disabling, int count) {
+        int[] order = new int[count];
+        boolean[] seen = new boolean[count];
+        for (int step = 0; step < count; step++) {
+            int index = disabling ? device.disableIndex(step) : device.restoreIndex(step, count);
+            if (index < 0 || index >= count || seen[index]) throw new IllegalArgumentException("Invalid Dog Mode write order");
+            seen[index] = true;
+            order[step] = index;
+        }
+        return order;
     }
 
     private Journal load() {

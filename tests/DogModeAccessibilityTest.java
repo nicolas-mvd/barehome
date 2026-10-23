@@ -3,6 +3,8 @@ package uy.nico.barehome;
 import android.content.Context;
 import android.util.AtomicFile;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 
 public final class DogModeAccessibilityTest {
     private static int assertions;
@@ -10,9 +12,14 @@ public final class DogModeAccessibilityTest {
         assertions++;
         if (!value) throw new AssertionError(message);
     }
-    public static void main(String[] arguments) {
+    public static void main(String[] arguments) throws Exception {
         Context context = new Context(new File(arguments[0]));
         check(!DogModeAccessibility.hasConsent(context), "Missing consent granted access");
+        try (FileOutputStream oldGrant = new FileOutputStream(new File(arguments[0], "dog-mode-accessibility-consent"))) {
+            oldGrant.write("allow-nsnow409-v1".getBytes(StandardCharsets.US_ASCII));
+        }
+        check(!DogModeAccessibility.hasConsent(context) && !DogModeAccessibility.available(context),
+                "Old helper-only consent authorized new debugging scope");
         AtomicFile.failFinish = true;
         check(!DogModeAccessibility.setConsent(context, true), "Failed grant claimed durable success");
         check(!DogModeAccessibility.hasConsent(context), "Failed grant leaked an allowed in-memory cache");

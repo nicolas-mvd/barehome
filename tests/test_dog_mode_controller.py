@@ -22,6 +22,8 @@ public abstract class Context {
 import java.util.*;
 public class ContentResolver {
  public final Map<String,String> secure=new HashMap<>(), global=new HashMap<>(), system=new HashMap<>();
+ public final List<String> events=new ArrayList<>(); public final Set<String> failures=new HashSet<>();
+ public boolean masterRestoreResetsAdb, adbRestoreChangesMaster;
  public int writes;
 }''',
     "android/content/Intent.java": '''package android.content;
@@ -41,7 +43,12 @@ import android.content.ContentResolver;
 import java.util.Map;
 public class Settings {
  private static boolean put(ContentResolver cr,Map<String,String> map,String key,String value){
-  cr.writes++; if(value==null)map.remove(key);else map.put(key,value);return true;}
+  cr.writes++; String event=(map==cr.secure?"secure:":"global:")+key; cr.events.add(event+"="+value);
+  if(cr.failures.contains(event))return false;
+  if(value==null)map.remove(key);else map.put(key,value);
+  if(cr.masterRestoreResetsAdb&&key.equals("development_settings_enabled")&&"1".equals(value))cr.global.put("adb_enabled","0");
+  if(cr.adbRestoreChangesMaster&&key.equals("adb_enabled")&&"1".equals(value))cr.global.put("development_settings_enabled","0");
+  return true;}
  public static class Secure {
   public static String getString(ContentResolver cr,String key){return cr.secure.get(key);}
   public static boolean putString(ContentResolver cr,String key,String value){return put(cr,cr.secure,key,value);}}

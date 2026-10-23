@@ -123,7 +123,7 @@ Do not add arbitrary intent targets or URI-supplied values.
 - Explain that optional `WRITE_SECURE_SETTINGS` is a broad protected-settings
   permission. BareHome uses it to write only `picture_backlight` and
   `picture_brightness` for picture controls. Separately consented Dog Mode has
-  the narrow energy/helper scope below. Install the APK before `./tv.sh backlight-permission`,
+  the narrow energy/debugging/helper scope below. Install the APK before `./tv.sh backlight-permission`,
   which grants access for user 0. The old `WRITE_SETTINGS` grant is insufficient.
   No root or ongoing ADB connection is needed. Report a rejected grant honestly.
 - Privately record both existing levels and the TV Picture mode before testing.
@@ -209,13 +209,25 @@ telemetry, periodic input, or wake lock is authorized. Device testing still
 requires the agreed viewing break.
 
 Dog Mode uses the existing optional `WRITE_SECURE_SETTINGS` permission to set
-only Secure `sleep_timeout=-1`, Secure `attentive_timeout=-1`, and Global
-`no_signal_auto_power_off=0`, after durably saving their exact raw/absent values.
+only Secure `sleep_timeout=-1`, Secure `attentive_timeout=-1`, Global
+`no_signal_auto_power_off=0`, Global `development_settings_enabled=0`, and Global
+`adb_enabled=0`, after durably saving their exact raw/absent values. The owner
+separately requested temporary Developer options/USB debugging changes, with
+their exact prior states restored on exit, including re-enabling an original On
+state. This broader scope requires the updated visible consent; a legacy
+helper-only grant must not authorize it. Accept only absent, `0`, or `1` raw
+debugging values. Disable `adb_enabled` before `development_settings_enabled`;
+restore the developer master before ADB, then confirm all five final values.
+Write only the two Global keys directly. Never automate the native Developer
+options master toggle, which resets other options, change system properties or
+network debugging, revoke USB authorizations, or use root. Old three-value D1/D2
+journals are restore-only under the new strategy: cancel/remove the helper and
+restore only their three actual originals; never invent prior debugging values.
 It also adds/removes only BareHome's own accessibility component while preserving
 all other service entries. Never write the global accessibility-enabled switch,
 screensaver setting, display timeout, picture settings, or unrelated vendor
 timers for Dog Mode. Stop must invalidate the durable generation and pending
-selector, remove the helper, restore all original energy values with readback,
+selector, remove the helper, restore all original saved values with readback,
 return Home, and only then clear the journal. Retain recovery state on any
 incomplete operation. Duplicate Start cannot overwrite originals or replay a
 channel click. Do not clear app data, uninstall, or discard the journal to hide

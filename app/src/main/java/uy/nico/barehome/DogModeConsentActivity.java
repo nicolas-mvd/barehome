@@ -34,8 +34,12 @@ public final class DogModeConsentActivity extends Activity {
                 + "BareHome uses this helper only in NS NOW while Dog Mode is starting or active. "
                 + "It selects CANAL 10 and responds to NS NOW’s exact inactivity prompt. "
                 + "It does not inspect other apps, save screen text or send periodic button presses.", 18));
-        body.addView(text("The helper turns off when you end Dog Mode. Ending also restores the TV’s previous "
-                + "energy settings and opens Home. You can revoke this permission here at any time.", 18));
+        body.addView(text("Starting also saves the TV’s current energy settings, Developer options and USB debugging, "
+                + "then turns the supported power-off timers and both debugging values off before opening NS NOW. "
+                + "It changes only these two debugging values, without resetting other Developer options or USB authorizations.", 18));
+        body.addView(text("Ending turns this helper off, restores the exact saved energy and debugging values, and opens Home. "
+                + "Developer options and USB debugging will turn back on if they were on before Start. "
+                + "You can end the mode and revoke this permission here at any time.", 18));
         status = text("", 18);
         status.setAccessibilityLiveRegion(android.view.View.ACCESSIBILITY_LIVE_REGION_POLITE);
         body.addView(status);
@@ -55,7 +59,7 @@ public final class DogModeConsentActivity extends Activity {
                 if (isFinishing() || isDestroyed()) return;
                 refresh();
                 status.setText(restored
-                        ? "Permission revoked. The helper is off and TV energy settings are restored."
+                        ? "Permission revoked. The helper is off and saved TV settings are restored."
                         : "The TV could not confirm a complete restore. Use Restore settings & exit in BareRemote. "
                             + "Check this helper is off in the TV’s Accessibility settings.");
             });
@@ -76,7 +80,7 @@ public final class DogModeConsentActivity extends Activity {
     private void refresh() {
         boolean allowed = DogModeAccessibility.hasConsent(this);
         allow.setEnabled(!allowed);
-        revoke.setEnabled(allowed || NsNowDogService.isEnabled(this));
+        revoke.setEnabled(allowed || NsNowDogService.isEnabled(this) || new DogModeController(this).generation() != null);
     }
     private TextView text(String value, int size) {
         TextView result = new TextView(this);

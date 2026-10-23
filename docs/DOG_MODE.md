@@ -1,8 +1,8 @@
 # Dog Mode TV bridge
 
 Dog Mode is one explicit TV operation with a persistent recovery record. A
-supported start saves the TV's existing automatic-off settings, disables the
-verified timers, and selects NS NOW's CANAL 10 through a verified channel
+supported start saves the TV's existing automatic-off settings, Developer options
+and USB debugging values, disables those verified controls, and selects NS NOW's CANAL 10 through a verified channel
 capability. Opening NS NOW by itself is not a successful channel selection. If
 that capability is unavailable, start returns `unavailable` before changing any
 energy setting.
@@ -18,24 +18,48 @@ is no boot receiver or automatic recovery write: use Stop to finish restoration.
 Do not clear BareHome's data or uninstall it while Dog Mode is active or recovery
 is required.
 
-## Supported energy controls
+## Supported temporary controls
 
 The controller requires model `CSV4K`, device `zhongshan`, product
 `KTC_MOTOROLA_4K_SA_21V2`, Android 11 / API 30, and BareHome's existing optional
-`WRITE_SECURE_SETTINGS` permission. The permission is broader than these three
-keys. The exact allowlist is:
+`WRITE_SECURE_SETTINGS` permission. The permission is broader than these five
+keys. The updated, separately consented strategy has this exact allowlist:
 
 | Android namespace | Key | Dog Mode value |
 | --- | --- | --- |
 | Secure | `sleep_timeout` | `-1` (Never) |
 | Secure | `attentive_timeout` | `-1` (Never) |
 | Global | `no_signal_auto_power_off` | `0` (Off) |
+| Global | `development_settings_enabled` | `0` (Off) |
+| Global | `adb_enabled` | `0` (Off) |
 
 These meanings were established from this TV's OEM Settings code: its
 `EnergySaverFragment` writes `-1` for Never, `TVSettingConfig` maps
 `attentive_timeout=-1` to Auto Sleep Never, and `PowerFragment` uses `0` for
 no-signal automatic power-off. They are not universal Android TV vendor keys.
 Other hardware and OS versions remain unsupported.
+
+The owner explicitly requested temporary Developer options and USB debugging
+changes so NS NOW can start without its debugging restriction. New consent saves
+all five originals before any write. Debugging originals must be exactly absent,
+`0`, or `1`; unrecognized raw values prevent Start. USB debugging is disabled
+before the Developer options master value. Exit restores the developer master
+first, then USB debugging, and verifies the complete five-value snapshot before
+clearing the journal. An originally On value is restored to On; an absent value
+is restored as absent. A failed or interrupted restoration retains the originals
+for an explicit later Stop.
+
+These are direct writes to only the two Global keys. BareHome does not operate
+the native Developer options master switch, whose UI resets unrelated options.
+It does not modify network debugging, system properties, USB authorizations or
+other developer values, or use root. Provider and NS NOW behavior still require
+a physical check on the supported TV; a readback does not prove video playback.
+
+The new `csv4k-android11-v2` strategy records five values in the bounded D2
+journal. Existing D1/D2 `csv4k-android11-v1` records keep only their three saved
+energy values. They report `restore_required` after an upgrade and cannot
+activate or grant a helper lease. Stop removes the helper and restores only those
+three originals, without reading a new debugging baseline or inventing one.
 
 The bridge leaves Picture settings, `screensaver_enabled`, and
 `screen_off_timeout` unchanged. In particular, `screen_off_timeout=-1` is not
@@ -59,7 +83,7 @@ setting. `off` means there is no outstanding journal; it does not assert which
 app is currently visible. `active` requires the active journal, matching disabled
 timer values, and the enabled helper monitoring that generation. `starting`
 means a live, bounded selection is in progress. An interrupted startup, unavailable
-active helper, or external timer change returns `restore_required`. Unsupported
+active helper, or external temporary-setting change returns `restore_required`. Unsupported
 capability returns `unavailable`, and unreadable
 or damaged storage returns `error`.
 
@@ -100,7 +124,7 @@ target was observed), `nsnow_input` (that target appeared but no channel click w
 accepted, including known-unsent preflight exits), `nsnow_player` (its player was
 not confirmed after an accepted click), or `nsnow_debug` (NS NOW's
 debugging restriction). These contain no screen text or arbitrary error detail.
-They are returned only after original energy settings, helper removal, and Home
+They are returned only after original saved settings, helper removal, and Home
 were successfully restored. An incomplete recovery always returns
 `restore_required` instead. A later state query returns the normal `off` state;
 diagnostics are not saved as a mode or a playback history.
@@ -131,8 +155,11 @@ has its own three-hour "¿Seguís ahí?" prompt, independent of the TV's timers.
 The optional Android Accessibility helper is limited in code to this exact
 NS NOW version and package, `uy.com.nsnow.atv`.
 
-The TV's visible Dog Mode consent screen explains this access. Opening it grants
-nothing. In BareRemote Settings, choose **Set up on TV** to open that page on the
+The TV's visible Dog Mode consent screen explains this access and the temporary
+debugging changes, including restoration of prior On values. Opening it grants
+nothing. The updated consent token is distinct from the old helper-only grant;
+existing users must explicitly allow the new scope before a new Start. This
+does not block restoration of an older journal. In BareRemote Settings, choose **Set up on TV** to open that page on the
 paired TV, then choose **Allow for Dog Mode** using the TV controls. The fixed
 `barehome://dog/setup` link accepts no query, fragment, or consent value. It only
 opens the page; Allow only saves a private opt-in. Start enables BareHome's own helper
@@ -141,7 +168,10 @@ handling of NS NOW's exact inactivity prompt while the durable active session
 remains authorized. The helper does not poll, send periodic keys, take
 screenshots, collect program history, or act on other apps. Each action checks
 the current package/window and matching durable generation immediately before
-dispatch. It never dismisses or bypasses NS NOW's USB-debugging block.
+dispatch. It never dismisses or bypasses NS NOW's USB-debugging block. Startup
+first disables the two consented debugging values and verifies them before
+opening NS NOW; if the restriction still appears, startup fails and restores
+the saved values.
 
 Android Accessibility can expose broader screen contents than this feature
 needs. Its package filter and code restrict the helper to NS NOW. The existing
@@ -150,7 +180,7 @@ only BareHome's component from `enabled_accessibility_services`. Other entries
 are preserved, and the app never writes the global accessibility-enabled switch.
 
 Stop invalidates pending work and removes only BareHome's helper before
-finishing energy restoration. Revoking consent also cancels and removes that
+finishing saved-setting restoration. Revoking consent also cancels and removes that
 helper immediately, then attempts restoration; a failure remains visible and
 keeps the journal. A failed removal cannot be reported as a completed exit.
 Following process death, a system rebind may adopt a valid durable active lease
@@ -160,10 +190,11 @@ automatically retunes an app. The helper is disabled when Dog Mode ends.
 ## Automated checks
 
 The host tests exercise the actual transaction, wire parser, HMAC output, and
-Android energy adapter. They cover durable snapshots, exact nullable-value
+Android settings adapter. They cover durable snapshots, exact nullable-value
 restoration, restart recovery, two-client idempotence, partial failure rollback,
 external edits, permission loss, corrupt journals, hardware guards and the narrow
-energy allowlist. They do not establish physical channel playback or persistence
+five-key allowlist, debugging write order, raw boolean validation, legacy three-key
+recovery and atomic-replacement failure. They do not establish physical channel playback or persistence
 across a real TV reboot.
 
 ## Physical validation — 2026-10-23
@@ -188,3 +219,27 @@ long-duration playback, TV reboot recovery and other TV/NS NOW versions were not
 physically tested. Prompt handling has source-backed selector fixtures and a
 final exact-prompt check before its one Back action. Android's Dog Mode client
 was checked with host/loopback tests; no physical phone was used for this check.
+
+
+### Automatic debugging restoration — BareHome 1.4.1
+
+On 2026-10-23 the signed 1.4.1 / code 13 APK was installed in place on the same
+CSV4K. The updated consent page required Allow again; opening and allowing did
+not change settings or enable the helper. The measured baseline had Developer
+options and USB debugging both `1`. Start from macOS 0.4.1 / build 15 returned
+`active` after the five disabled values matched; TCP debugging was closed while
+the ordinary pinned remote remained available. No manual debugging-off action
+was used for this start.
+
+End returned authenticated `off` after complete provider readbacks, helper
+removal and Home. The network debugging connection was initially unavailable;
+it became available later while the owner checked the TV. Subsequent direct ADB
+reads matched all nine recorded checks: both debugging values `1`, all three
+original energy values, absent helper entry, original display timeout and picture
+levels. This does not establish immediate legacy network-listener restart on
+every firmware; Dog Mode restores the saved settings, without writing transport
+properties or USB authorization data.
+
+The owner installed Android 0.7.1 and reported that their tests worked. This is
+an owner confirmation of the reported reopen/use flow, not an instrumented trace
+of NS NOW's lifecycle or a full-duration playback/prompt test.

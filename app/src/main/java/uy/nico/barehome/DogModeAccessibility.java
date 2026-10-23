@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 /** Explicit opt-in and edits to only BareHome's own accessibility-service component. */
 final class DogModeAccessibility {
     private static final Object SETTINGS_LOCK = new Object();
-    private static final byte[] ALLOWED = "allow-nsnow409-v1".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] ALLOWED = "allow-nsnow409-energy-debug-v2".getBytes(StandardCharsets.US_ASCII);
 
     static boolean hasConsent(Context context) {
         synchronized (SETTINGS_LOCK) {

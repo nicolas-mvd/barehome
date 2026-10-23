@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
-/** Private, small journal. Every read comes from disk, including after a failed save. */
+/** Private journal for three-key legacy and five-key strategies; reads never migrate originals. */
 final class DogModeStore implements DogModeTransaction.Store {
     private static final Object LOCK = new Object();
     private final File base;

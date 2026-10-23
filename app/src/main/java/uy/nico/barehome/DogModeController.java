@@ -7,8 +7,10 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.provider.Settings;
 
-/** The exact CSV4K energy controls and a separately verified, fixed channel capability. */
+/** Exact CSV4K energy/debugging controls and a separately verified, fixed channel capability. */
 final class DogModeController {
+    private static final String LEGACY_STRATEGY = "csv4k-android11-v1";
+    private static final String STRATEGY = "csv4k-android11-v2";
     interface Channel {
         boolean available();
         /** Success requires selecting the fixed CANAL 10 target, not merely opening NS NOW. */
@@ -36,13 +38,25 @@ final class DogModeController {
                         && app.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS)
                             == PackageManager.PERMISSION_GRANTED;
             }
-            @Override public String strategy() { return "csv4k-android11-v1"; }
-            @Override public int settingCount() { return 3; }
+            @Override public String strategy() { return STRATEGY; }
+            @Override public int settingCount() { return 5; }
+            @Override public boolean supportsRestore(String strategy, int count) {
+                return STRATEGY.equals(strategy) && count == 5 || LEGACY_STRATEGY.equals(strategy) && count == 3;
+            }
+            @Override public boolean validOriginal(int index, String value) {
+                return index < 3 || value == null || "0".equals(value) || "1".equals(value);
+            }
+            @Override public int disableIndex(int position) {
+                // Turn USB debugging off before the Developer options master value.
+                return position == 3 ? 4 : position == 4 ? 3 : position;
+            }
             @Override public String read(int index) {
                 switch (index) {
                     case 0: return Settings.Secure.getString(app.getContentResolver(), "sleep_timeout");
                     case 1: return Settings.Secure.getString(app.getContentResolver(), "attentive_timeout");
                     case 2: return Settings.Global.getString(app.getContentResolver(), "no_signal_auto_power_off");
+                    case 3: return Settings.Global.getString(app.getContentResolver(), "development_settings_enabled");
+                    case 4: return Settings.Global.getString(app.getContentResolver(), "adb_enabled");
                     default: throw new IllegalArgumentException("Unknown Dog Mode setting");
                 }
             }
@@ -52,13 +66,17 @@ final class DogModeController {
                     case 0: return Settings.Secure.putString(app.getContentResolver(), "sleep_timeout", value);
                     case 1: return Settings.Secure.putString(app.getContentResolver(), "attentive_timeout", value);
                     case 2: return Settings.Global.putString(app.getContentResolver(), "no_signal_auto_power_off", value);
+                    case 3: return validOriginal(index, value)
+                            && Settings.Global.putString(app.getContentResolver(), "development_settings_enabled", value);
+                    case 4: return validOriginal(index, value)
+                            && Settings.Global.putString(app.getContentResolver(), "adb_enabled", value);
                     default: throw new IllegalArgumentException("Unknown Dog Mode setting");
                 }
             }
             @Override public String disabled(int index) {
                 switch (index) {
                     case 0: case 1: return "-1";
-                    case 2: return "0";
+                    case 2: case 3: case 4: return "0";
                     default: throw new IllegalArgumentException("Unknown Dog Mode setting");
                 }
             }
