@@ -2,13 +2,13 @@
 
 A tiny home screen for Android TV. Text, a remote, your apps.
 
-**1.3:** adds an update button beside Day/Night when a newer release is available.
-The launcher checks GitHub only when Home becomes visible, at most once a day;
-installation always needs your confirmation.
+**1.4:** adds optional Dog Mode for BareRemote: NS NOW / CANAL 10, temporary TV
+energy overrides and exact restoration on exit. See [one-time setup and recovery](docs/DOG_MODE.md).
 
 Inspired by the suckless approach: small code, few moving parts, configuration in
-source. One launcher Activity and Canvas View, plus a small update screen. Android's built-in Java APIs. No libraries,
-Gradle, ads, recommendations, artwork, services, or idle polling. The optional
+source. One launcher Activity and Canvas View, plus small update and consent screens. Android's built-in Java APIs. No libraries,
+Gradle, ads, recommendations, artwork or idle polling. Dog Mode's explicitly
+enabled Accessibility helper runs only for its NS NOW session. The optional
 phone mode check sends one authenticated local-network reply per request. Update
 checks make one bounded GitHub request when due; there is no idle updater service.
 
@@ -53,7 +53,7 @@ The [full guide](docs/CONNECT.md) also has direct ADB commands for Windows.
 
 ## Use
 
-**BareHome 1.3** has one **☀ Day / ☾ Night** button beside Settings. Click to
+**BareHome 1.4** has one **☀ Day / ☾ Night** button beside Settings. Click to
 switch modes; hold OK to customize the selected mode.
 
 | Control | Action |
@@ -74,7 +74,7 @@ switch modes; hold OK to customize the selected mode.
 Day and Night each remember **Backlight (5–100)** and **Picture Brightness
 (0–100)**. Night starts at **5 / 20**; Day starts from the TV's existing levels.
 The button shows the selected mode. Starting BareHome does not reapply a preset,
-and there is no background service or polling. The [picture-controls guide](docs/BRIGHTNESS.md)
+and picture controls use no background service or polling. The [picture-controls guide](docs/BRIGHTNESS.md)
 explains defaults, upgrades, and the difference between the two settings.
 
 These controls use the manufacturer's actual panel-backlight and picture-signal
@@ -115,6 +115,26 @@ Apps are alphabetical by default. Version 1.3 saves the initial compiled pinned
 order locally so subsequent public APK updates preserve a personal build's order. The list includes TV apps and falls back to
 ordinary Android launcher entries. Installing or removing an app refreshes the
 list when you return home. Long labels are shortened to fit.
+
+## Dog Mode
+
+BareRemote Android 0.7.0 or macOS 0.4.0 can request **NS NOW → CANAL 10** and keep
+the supported TV on while you are away. BareHome saves the exact existing sleep,
+inactivity and no-signal power-off values before applying temporary overrides.
+Ending Dog Mode restores those values and returns Home. A durable recovery
+record remains until restoration succeeds; another paired remote can end it.
+
+One-time consent enables the NS NOW Accessibility helper only during Dog Mode.
+It selects CANAL 10 through NS NOW's own interface and responds to that app's
+three-hour continuation prompt. It is disabled on exit. Android's permission
+has broader screen-reading/control scope; the implementation checks the package,
+window and fixed controls before acting and does not record screen content.
+NS NOW requires USB debugging to be off.
+
+This integration is limited to the exact CSV4K / Android 11 configuration and
+NS NOW 1.1.266. Changed app layouts, login dialogs or unavailable channels can
+prevent startup. A channel-label confirmation is not proof of decoded video or
+uninterrupted playback. See [setup, permissions, recovery and test limits](docs/DOG_MODE.md).
 
 ## Updates
 
@@ -233,20 +253,30 @@ accounted elsewhere. Speed inside other apps was not established by this test.
 ## Privacy and license
 
 BareHome has no telemetry or account. GitHub hosts update metadata and APKs. Its `INTERNET` permission
-is used for one-shot authenticated picture-state replies on the local network
+is used for bounded authenticated picture and Dog Mode replies on the local network
 and bounded GitHub update checks/downloads; there is no network listener or idle polling. It queries installed launchable
 apps locally and remembers the selected app. The
-optional picture controls declare `WRITE_SECURE_SETTINGS`, granted explicitly
-through ADB. This is a broad system-settings permission; BareHome uses it to
-write only the vendor's `picture_backlight` and `picture_brightness` values.
+optional controls declare `WRITE_SECURE_SETTINGS`, granted explicitly
+through ADB. This is a broad system-settings permission. Picture controls write
+the vendor's `picture_backlight` and `picture_brightness` values. Consented Dog
+Mode additionally writes only the three documented energy settings and adds or
+removes its own Accessibility component, preserving other enabled services.
 Each mode's levels and original TV Picture mode are stored locally. App launching
 does not require this permission.
 The exported command entry point can also be invoked by other apps on the TV;
-it accepts only the saved preset choices, source menu, and strictly validated
-state/toggle requests with a local reply address. It never accepts arbitrary
+it accepts only the saved preset choices, source menu, Dog Mode setup and
+strictly validated picture/Dog Mode requests with a local reply address. It never accepts arbitrary
 picture settings, levels, or activity targets.
 [Grant and revoke instructions](docs/BRIGHTNESS.md#allow-access-once).
 
 [MIT licensed](LICENSE). Small, focused contributions are welcome. Include your
 TV model and Android version in compatibility reports; omit IP addresses, ADB
 pairing codes, hardware serial numbers, and private logs.
+
+
+Version **1.4** passes all **45 host tests**, including 164 NS NOW selector
+assertions and guarded transaction/energy-recovery coverage. A short physical
+CSV4K check with BareRemote macOS 0.4.0 and NS NOW 1.1.266 confirmed CANAL 10
+playback, End restoring energy settings/removing the helper, and returning Home.
+The three-hour prompt and long-duration playback have not been physically tested.
+See the [Dog Mode validation record](docs/DOG_MODE.md#physical-validation--2026-10-23).

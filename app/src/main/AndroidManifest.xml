@@ -8,6 +8,7 @@
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <queries>
+        <package android:name="uy.com.nsnow.atv" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
@@ -42,7 +43,45 @@
             android:exported="false"
             android:screenOrientation="landscape"
             android:excludeFromRecents="true" />
+        <activity
+            android:name=".DogModeConsentActivity"
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="barehome" android:host="dog" android:path="/setup" />
+            </intent-filter>
+        </activity>
+        <service
+            android:name=".NsNowDogService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/nsnow_dog_service" />
+        </service>
         <receiver android:name=".PictureStateReceiver" android:exported="false" />
+        <receiver android:name=".DogModeReceiver" android:exported="false" />
+        <activity
+            android:name=".DogModeActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="barehome" android:host="dog" android:path="/state" />
+                <data android:scheme="barehome" android:host="dog" android:path="/start" />
+                <data android:scheme="barehome" android:host="dog" android:path="/stop" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".PictureModeActivity"
             android:exported="true"

@@ -122,7 +122,8 @@ Do not add arbitrary intent targets or URI-supplied values.
   Do not remove this gate to make an untested model appear supported.
 - Explain that optional `WRITE_SECURE_SETTINGS` is a broad protected-settings
   permission. BareHome uses it to write only `picture_backlight` and
-  `picture_brightness`. Install the APK before `./tv.sh backlight-permission`,
+  `picture_brightness` for picture controls. Separately consented Dog Mode has
+  the narrow energy/helper scope below. Install the APK before `./tv.sh backlight-permission`,
   which grants access for user 0. The old `WRITE_SETTINGS` grant is insufficient.
   No root or ongoing ADB connection is needed. Report a rejected grant honestly.
 - Privately record both existing levels and the TV Picture mode before testing.
@@ -188,6 +189,38 @@ Only Movie picture mode (9) was tested. HDR, Dolby Vision, other picture modes,
 firmware, TV models, and persistence across a TV reboot remain untested. Do not
 invent vendor calls, change unrelated settings, or add root to claim support.
 
+## Dog Mode exception
+
+Read [docs/DOG_MODE.md](docs/DOG_MODE.md) before changing or operating Dog Mode.
+The owner explicitly requested NS NOW CANAL 10 playback with automatic-off
+timers disabled until exit, and approved an NS NOW-only Accessibility helper
+for channel selection and the app's three-hour inactivity prompt. This is a
+specific exception to the no-services design: the helper is enabled only for a
+consented Dog Mode session, uses NS NOW accessibility events without polling,
+and is removed on exit. The visible consent screen must never grant access just
+because it was opened. Do not infer this consent from an ordinary launcher or
+picture-controls installation request.
+
+Keep the exact CSV4K model/device/product and Android 11 / API 30 gates, NS NOW
+1.1.266 (409) package gate, fixed selector and exact inactivity-prompt checks.
+Never bypass the app's USB-debugging block or broaden actions to arbitrary TV
+apps, dialogs, settings, URLs, keys, or gestures. No screenshot, content history,
+telemetry, periodic input, or wake lock is authorized. Device testing still
+requires the agreed viewing break.
+
+Dog Mode uses the existing optional `WRITE_SECURE_SETTINGS` permission to set
+only Secure `sleep_timeout=-1`, Secure `attentive_timeout=-1`, and Global
+`no_signal_auto_power_off=0`, after durably saving their exact raw/absent values.
+It also adds/removes only BareHome's own accessibility component while preserving
+all other service entries. Never write the global accessibility-enabled switch,
+screensaver setting, display timeout, picture settings, or unrelated vendor
+timers for Dog Mode. Stop must invalidate the durable generation and pending
+selector, remove the helper, restore all original energy values with readback,
+return Home, and only then clear the journal. Retain recovery state on any
+incomplete operation. Duplicate Start cannot overwrite originals or replay a
+channel click. Do not clear app data, uninstall, or discard the journal to hide
+a recovery failure. A process restart must not replay an uncertain selection.
+
 ## Recovery and boundaries
 
 Keep the original launcher installed and enabled. Use `./tv.sh restore` to restore
@@ -204,9 +237,10 @@ TV screenshots containing personal app content without the user's authorization.
 ## When changing source
 
 Preserve the design: one launcher Activity and custom View, built-in Android Java
-APIs, no runtime dependencies, network listeners, services, scheduled work, or idle
+APIs, no runtime dependencies, network listeners, general services, scheduled work, or idle
 redraw loop. The user-requested updater adds a separate native update screen and
-private read-only APK provider. Read `docs/UPDATES.md`: check GitHub only while Home
+private read-only APK provider. The separately consented Dog Mode helper is the
+specific service exception above. Read `docs/UPDATES.md`: check GitHub only while Home
 is visible, at most once per 24 hours, or on an explicit manual check. No automatic
 APK downloads. Preserve URL/size/deadline/checksum/package/version/signer validation
 and Android's installation confirmation. Publish assets before updating `update.json`.
@@ -215,8 +249,8 @@ first public-APK update; never install an alphabetical bootstrap over it blindly
 The short, windowless explicit remote-command entry point requested for BareRemote
 must remain separate from this UI.
 Its non-exported reply receiver may perform only the bounded outbound local
-callback described above. Outside the bounded GitHub updater, no general networking
-or persistent work is authorized.
+callback described above. Outside the bounded GitHub updater and explicitly
+consented Dog Mode scope, no general networking or persistent work is authorized.
 Use `Config.java` for simple configuration. Keep app launch and Home recovery
 working even when optional backlight is unsupported.
 
